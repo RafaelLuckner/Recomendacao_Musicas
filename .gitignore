@@ -1,0 +1,9 @@
+*.python-version
+*.env*
+
+
+*test*
+*__pycache__*
+/data/*
+/img/*
+exploration.ipynb

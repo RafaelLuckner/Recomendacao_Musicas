@@ -1,0 +1,34 @@
+import streamlit as st
+import importlib
+
+if "page" not in st.session_state:
+    st.session_state["page"] = "login"
+
+def switch_page(page_name):
+    st.session_state["page"] = page_name
+    st.rerun()
+
+if st.session_state["page"] not in ["login", "register"]:
+    st.sidebar.title("🎵 Menu")
+    if st.sidebar.button("🏠 Página Inicial"):
+        switch_page("home")
+    if st.sidebar.button("🔎 Buscar Música"):
+        switch_page("search")
+    if st.sidebar.button("🎧 Recomendações"):
+        switch_page("recommendations")  # Adicionando a nova página de recomendações
+    if st.sidebar.button("🚪 Logout"):
+        switch_page("login")
+
+if st.session_state["page"] == "login":
+    import pagess.login as page
+elif st.session_state["page"] == "register":
+    import pagess.register as page
+elif st.session_state["page"] == "home":
+    import pagess.home as page
+elif st.session_state["page"] == "search":
+    import pagess.busca as page
+elif st.session_state["page"] == "recommendations":  # Carregar a nova página de recomendações
+    import pagess.recomendacoes as page
+
+importlib.reload(page)
+page.show()
