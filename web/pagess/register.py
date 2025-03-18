@@ -18,9 +18,9 @@ def show():
 
     if register_button:
         if password == confirm_password:
-            # Aqui entraria a lógica de criação de usuário no Firebase
+            # Aqui entraria a lógica de criação de usuário no MongoDB
             st.success("✅ Conta criada com sucesso!")
-            st.session_state["page"] = "login"
+            st.session_state["page"] = "home"
             st.rerun()
         else:
             st.error("❌ As senhas não coincidem!")

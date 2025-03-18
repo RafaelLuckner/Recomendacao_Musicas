@@ -11,7 +11,7 @@ def show():
     """)
     
     # Seção com imagem de música
-    st.image("img/musica.jpg", use_container_width=True)
+    st.image("web/assets/musica.jpg", use_container_width=True)
     # Botões para navegação
     st.subheader("O que você quer fazer?")
     col1, col2 = st.columns(2)
