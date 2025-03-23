@@ -9,3 +9,4 @@
 exploration.ipynb
 *ipynb*
 .cache
+/venv
