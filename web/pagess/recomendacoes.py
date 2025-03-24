@@ -45,7 +45,7 @@ def show():
     st.title("🎵 Recomendações Personalizadas")
 
     # Criar abas para navegação
-    tab1, tab2, tab3 = st.tabs(["🎧 Gêneros", "🎶 Recomendações", 'Dados de Sessão / Músicas Disponiveis'])
+    tab1, tab2, tab3 = st.tabs(["🎶 Recomendações", "🎧 Gêneros", 'Dados de Sessão / Músicas Disponiveis'])
 
     data = pd.read_csv('data/dataset.csv')
     genres = data['track_genre'].unique()
@@ -61,30 +61,8 @@ def show():
 
     # Tab 1 - Gêneros
     with tab1:
-        st.subheader("🎧 Escolha seus gêneros favoritos")
 
-        # campo de busca para filtrar gêneros
-        search_query = st.text_input("🔍 Filtrar gêneros", placeholder="Digite um gênero...").lower()
 
-        # Filtrar gêneros com base na pesquisa
-        filtered_genres = [g for g in genres if search_query in g.lower()] if search_query else genres
-
-        # Criar layout em 3 colunas x 3 linhas
-        rows = [filtered_genres[i:i+3] for i in range(0, len(filtered_genres), 3)]
-
-        for row in rows:
-            col1, col2, col3 = st.columns(3)
-            for idx, genre in enumerate(row):
-                col = [col1, col2, col3][idx]
-                is_selected = genre in st.session_state["selected_genres"]
-                if col.button(f"{'✅' if is_selected else '❌'} {genre}", key=genre, use_container_width=True, help=f"{'Remover' if is_selected else 'Adicionar'} {genre}"):
-                    if is_selected:
-                        st.session_state["selected_genres"].remove(genre)
-                    else:
-                        st.session_state["selected_genres"].append(genre)
-                    st.rerun()
-
-    with tab2:
         st.subheader("🎶 Recomendações de Música")
 
         # Verifica se os gêneros foram selecionados
@@ -160,6 +138,31 @@ def show():
 
         else:
             st.warning("Selecione gêneros na aba 'Gêneros' para ver recomendações.")
+
+
+    with tab2:
+        st.subheader("🎧 Escolha seus gêneros favoritos")
+
+        # campo de busca para filtrar gêneros
+        search_query = st.text_input("🔍 Filtrar gêneros", placeholder="Digite um gênero...").lower()
+
+        # Filtrar gêneros com base na pesquisa
+        filtered_genres = [g for g in genres if search_query in g.lower()] if search_query else genres
+
+        # Criar layout em 3 colunas x 3 linhas
+        rows = [filtered_genres[i:i+3] for i in range(0, len(filtered_genres), 3)]
+
+        for row in rows:
+            col1, col2, col3 = st.columns(3)
+            for idx, genre in enumerate(row):
+                col = [col1, col2, col3][idx]
+                is_selected = genre in st.session_state["selected_genres"]
+                if col.button(f"{'✅' if is_selected else '❌'} {genre}", key=genre, use_container_width=True, help=f"{'Remover' if is_selected else 'Adicionar'} {genre}"):
+                    if is_selected:
+                        st.session_state["selected_genres"].remove(genre)
+                    else:
+                        st.session_state["selected_genres"].append(genre)
+                    st.rerun()
 
 
     # Tab 3 - Dados de Sessão

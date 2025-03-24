@@ -56,9 +56,16 @@ def show():
                     print("Documento inserido com ID:", resultado.inserted_id)
 
                     st.success("✅ Conta criada com sucesso!")
-                    st.session_state["page"] = "home"
+                    st.session_state["page"] = "select_genres"
                     st.rerun()
 
     if back_to_login:
         st.session_state["page"] = "login"
+        st.rerun()
+    
+    
+    test =st.button("test")
+    if test:
+        st.session_state['name'] = 'teste'
+        st.session_state["page"] = "select_genres"
         st.rerun()

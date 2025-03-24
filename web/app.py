@@ -8,7 +8,7 @@ def switch_page(page_name):
     st.session_state["page"] = page_name
     st.rerun()
 
-if st.session_state["page"] not in ["login", "register"]:
+if st.session_state["page"] not in ["login", "register", 'select_genres', 'select_songs']:
     st.sidebar.title("🎵 Menu")
     if st.sidebar.button("🏠 Página Inicial"):
         switch_page("home")
@@ -23,6 +23,10 @@ if st.session_state["page"] == "login":
     import pagess.login as page
 elif st.session_state["page"] == "register":
     import pagess.register as page
+elif st.session_state["page"] == "select_genres":
+    import pagess.select_genres as page
+elif st.session_state["page"] == "select_songs":
+    import pagess.select_songs as page
 elif st.session_state["page"] == "home":
     import pagess.home as page
 elif st.session_state["page"] == "search":
