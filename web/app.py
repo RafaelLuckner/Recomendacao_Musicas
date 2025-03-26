@@ -9,14 +9,14 @@ def switch_page(page_name):
     st.rerun()
 
 if st.session_state["page"] not in ["login", "register", 'select_genres', 'select_songs']:
-    st.sidebar.title("🎵 Menu")
-    if st.sidebar.button("🏠 Página Inicial"):
+    st.sidebar.title('Menu')
+    if st.sidebar.button("🏠 Página Inicial", use_container_width=True):
         switch_page("home")
-    if st.sidebar.button("🔎 Buscar Música"):
+    if st.sidebar.button("🔎 Buscar Música", use_container_width=True):
         switch_page("search")
-    if st.sidebar.button("🎧 Recomendações"):
+    if st.sidebar.button(" 🎶 Suas Músicas ", use_container_width=True, help= "Seu perfil com suas músicas preferidas"):
         switch_page("recommendations")  
-    if st.sidebar.button("🚪 Logout"):
+    if st.sidebar.button("🚪 Logout", use_container_width=True):
         switch_page("login")
 
 if st.session_state["page"] == "login":

@@ -6,7 +6,7 @@ def show():
 
     # Texto de boas-vindas
     st.write(f"""
-    Bem vindo(a) {st.session_state["name"]}!
+    Bem vindo(a) {st.session_state["name"].capitalize()}!
     Aqui você pode descobrir novas músicas baseadas em seus gostos pessoais.
     Selecione seus gêneros favoritos, receba recomendações e ouça músicas diretamente do YouTube!
     """)
