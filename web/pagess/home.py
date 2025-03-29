@@ -18,13 +18,13 @@ def show():
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("🎧 Começar a explorar recomendações"):
+        if st.button("🎧 Começar a explorar Músicas"):
             st.session_state["page"] = "recommendations"
             st.rerun()
 
     with col2:
         if st.button("🔎 Buscar uma música"):
-            st.session_state["page"] = "search"
+            st.session_state["page"] = "busca"
             st.rerun()
 
     # Detalhes adicionais sobre a plataforma (opcional)
