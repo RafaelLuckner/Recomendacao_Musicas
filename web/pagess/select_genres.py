@@ -3,7 +3,7 @@ import pandas as pd
 
 def show():
     # Carregar dados
-    data = pd.read_csv('data/dataset.csv')
+    data = pd.read_csv('data/data_traduct.csv')
     genres = data['track_genre'].unique()
 
     # Verificar se os estados existem

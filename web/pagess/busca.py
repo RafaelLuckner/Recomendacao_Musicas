@@ -3,9 +3,11 @@ import requests
 from dotenv import load_dotenv
 import os
 import time
+import base64
 
 load_dotenv()
-
+client_id = os.getenv("SPOTIPY_CLIENT_ID")
+client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 # -------------------------------
 # FUNÇÕES PARA A API DO YOUTUBE
 # -------------------------------
@@ -46,7 +48,8 @@ def get_deezer_playlist_tracks(playlist_id, limit=50):
             {
                 "title": track["title"],
                 "artist": track["artist"]["name"],
-                "album_cover": track["album"].get("cover_medium", None)
+                "album_cover": track["album"].get("cover_medium", None),
+                # 'genre': track['album']['genre']
             }
             for track in tracks[:limit]
         ]
@@ -63,7 +66,57 @@ DEEZER_PLAYLIST_IDS = {
     "Top 50 Global": "10064140302"   # ID para Top 50 Global
 }
 
+def link_musica_deezer(musica):
+    url = f"https://api.deezer.com/search?q={musica}"
+    resposta = requests.get(url)
+    
+    if resposta.status_code == 200:
+        dados = resposta.json()
+        if dados['data']:
+            primeiro_resultado = dados['data'][0]  # Pegamos o primeiro resultado
+            return primeiro_resultado['link']  # Link da música no Deezer
+        else:
+            return None
+    else:
+        return None
+def link_musica_spotify(musica, client_id, client_secret):
+    # Primeiro, obtém o token de autenticação
+    auth = f'{client_id}:{client_secret}'
+    auth_b64 = base64.b64encode(auth.encode()).decode('utf-8')
+    headers = {
+        'Authorization': f'Basic {auth_b64}',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    data = {
+        'grant_type': 'client_credentials'
+    }
+    
+    # Obtenção do token de acesso
+    token_url = 'https://accounts.spotify.com/api/token'
+    token_resposta = requests.post(token_url, headers=headers, data=data)
+    
+    if token_resposta.status_code == 200:
+        token = token_resposta.json()['access_token']
+    else:
+        return None
 
+    # Agora faz a busca pela música no Spotify
+    search_url = f"https://api.spotify.com/v1/search?q={musica}&type=track&limit=1"
+    search_headers = {
+        'Authorization': f'Bearer {token}'
+    }
+    search_resposta = requests.get(search_url, headers=search_headers)
+    
+    if search_resposta.status_code == 200:
+        dados = search_resposta.json()
+        if dados['tracks']['items']:
+            primeiro_resultado = dados['tracks']['items'][0]  # Pegamos o primeiro resultado
+            return primeiro_resultado['external_urls']['spotify']  # Link da música no Spotify
+        else:
+            return None
+    else:
+        return None
+    
 # -------------------------------
 # INTERFACE STREAMLIT
 # -------------------------------
@@ -89,7 +142,7 @@ def show():
             
         if search_query:
             st.write(f"Você está buscando por: **{search_query}**")
-            data = search_youtube(search_query, api_key1)
+            data = search_youtube(search_query, api_key1)    
             if is_quota_error(data):
                 st.info("Cota da chave 1 excedida. Utilizando com a chave 2...")
                 data = search_youtube(search_query, api_key2)
@@ -101,11 +154,66 @@ def show():
                 video_id = videos[0]["id"]["videoId"]
                 # st.subheader("▶️ Tocando agora:")
                 st.video(f"https://www.youtube.com/embed/{video_id}?autoplay=0",autoplay=True)
+                musica_deezer = link_musica_deezer(search_query)
+                musica_spotify = link_musica_spotify(search_query, client_id, client_secret)
+
+                if musica_deezer or musica_spotify:
+                    st.markdown(
+                        f'<div style="display: flex; align-items: center; gap: 10px;">'
+                        f'{f"<a href=\"{musica_deezer}\" target=\"_blank\"><img src=\"https://www.deezer.com/favicon.ico\" width=\"50\"></a>" if musica_deezer else ""}'
+                        f'{f"<a href=\"{musica_spotify}\" target=\"_blank\"><img src=\"https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png\" width=\"50\"></a>" if musica_spotify else ""}'
+                        '</div>',
+                        unsafe_allow_html=True,
+                        help="Clique para acessar a música"
+                    )
+    
             else:
                 st.warning("Nenhum resultado encontrado. Tente outra pesquisa.")
         else:
             st.warning("Digite o nome de uma música ou artista para iniciar a busca.")
-            # Recomendações de nosso sistema
+
+        st.write("---")
+        # Configuração inicial do estado da sessão
+        if 'avaliacao' not in st.session_state:
+            st.session_state.avaliacao = 0
+
+        # Função para atualizar a avaliação
+        def atualizar_avaliacao(nota):
+            st.session_state.avaliacao = nota
+        
+        # Layout das estrelas
+        st.write("**Avalie esta música:**")
+        cols = st.columns(10)  # Cria 5 colunas para as estrelas
+
+        # Preenche cada coluna com uma estrela interativa
+        for i in range(1, 6):
+            with cols[i-1]:
+                # Escolhe o emoji com base na avaliação atual
+                emoji = "★" if i <= st.session_state.avaliacao else "☆"
+                st.button(
+                    emoji,
+                    key=f"star_{i}",
+                    on_click=atualizar_avaliacao,
+                    args=(i,),
+                    help=f"Dar {i} estrela{'s' if i > 1 else ''}"
+                )
+
+        # Feedback visual
+        if st.session_state.avaliacao > 0:
+            st.subheader(f"{'★' * st.session_state.avaliacao}{'☆' * (5 - st.session_state.avaliacao)}")
+            
+            # Mensagens personalizadas conforme a avaliação
+            mensagens = {
+                1: "Oh não! Vamos melhorar... 😔",
+                2: "Hmm, precisamos ajustar algumas coisas...",
+                3: "Na média! Vamos para o próximo nível? 🎵",
+                4: "Uhul! Quase perfeito! 🎉",
+                5: "INCRÍVEL! Você ama essa música! 🤩🎶"
+            }
+            
+            st.write(f"Você deu {st.session_state.avaliacao} estrela(s)! {mensagens[st.session_state.avaliacao]}")
+
+        # Recomendações de nosso sistema
         with st.expander("Recomendações"):
             st.write("Em desenvolvimento...")
     # -------- COLUNA DIREITA: Top 50 com Tabs e expanders --------
@@ -147,6 +255,14 @@ def show():
                                 unique_key = f"{playlist_key}_{idx}_{track['title']}"
                                 if st.button("▶️ Tocar", key=unique_key):
                                     st.session_state['search_query'] = f"{track['title']} {track['artist']}"
+                                    new_entry = {
+                                        "song": track["title"],
+                                        "artist": track["artist"],
+                                        "cover_url": track["album_cover"],
+                                        "timestamp": time.time(),
+                                        # "genre": track["genre"]
+                                    }
+                                    st.session_state["search_history"].append(new_entry)
                                     st.rerun()
         
         with tab_brasil:

@@ -4,7 +4,7 @@ import pandas as pd
 # Cache para carregar os dados uma única vez
 @st.cache_data
 def load_data():
-    return pd.read_csv('data/dataset.csv')[['track_name', 'track_genre']].drop_duplicates()
+    return pd.read_csv('data/data_traduct.csv')[['track_name', 'track_genre']].drop_duplicates()
 
 def show():
     # Carregar dados

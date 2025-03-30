@@ -21,7 +21,8 @@ def clean_session_state():
                   'email',
                   'password',
                   'image_cache',
-                  "tab"]
+                  "tab",
+                  "avaliacao"]
     for key in list(st.session_state.keys()):
         if key not in valid_keys:
             del st.session_state[key]
@@ -86,7 +87,7 @@ def show():
     # Criar abas para navegação
     tab1, tab2, tab3 = st.tabs(["Para você ", " Histórico", " Gêneros"])
 
-    data = pd.read_csv('data/dataset.csv')
+    data = pd.read_csv('data/data_traduct.csv')
     genres = data['track_genre'].unique()
 
     if "selected_genres" not in st.session_state:
@@ -343,7 +344,7 @@ def show():
                                         st.session_state["search_history"] = []
                                     st.session_state["search_history"].append(new_entry)
                                     st.session_state["search_query"] = song
-                                    st.session_state["page"] = "busca"
+                                    ############# st.session_state["page"] = "busca"
                                     st.rerun()
                         if st.button("Atualizar este gênero", key=f"refresh_{genre}"):
                             st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit= 3)

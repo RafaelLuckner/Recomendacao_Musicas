@@ -16,16 +16,16 @@ if st.session_state["page"] not in ["login", "register", 'select_genres', 'selec
     st.sidebar.title('')
     st.sidebar.title('')
     st.sidebar.title('')
-    if st.sidebar.button("🏠 Página Inicial", use_container_width=True):
+    if st.sidebar.button("🏠 Página Inicial", use_container_width=True, help= "Inicie por aqui"):
         switch_page("home")
     if st.sidebar.button(" 🎶 Suas Músicas ", use_container_width=True, help= "Seu perfil com suas músicas preferidas"):
         switch_page("recommendations")  
-    if st.sidebar.button(" 🔎 Pesquisar", use_container_width=True):
+    if st.sidebar.button(" 🔎 Pesquisar", use_container_width=True, help= "Ouça músicas e descubra as mais ouvidas do momento"):
         switch_page("busca")  
-    if st.sidebar.button(" 📊 Suas Preferências", use_container_width=True):
+    if st.sidebar.button(" 📊 Suas Preferências", use_container_width=True, help= "Descubra quais músicas e autores você costuma acompanhar"):
         switch_page("dashboard")
 
-    if st.sidebar.button("🚪 Logout", use_container_width=True):
+    if st.sidebar.button("🚪 Logout", use_container_width=True, help="Sair da conta"):
         switch_page("login")
 
 
