@@ -5,6 +5,7 @@ import os
 import time
 import base64
 
+
 load_dotenv()
 client_id = os.getenv("SPOTIPY_CLIENT_ID")
 client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
@@ -121,12 +122,15 @@ def link_musica_spotify(musica, client_id, client_secret):
 # INTERFACE STREAMLIT
 # -------------------------------
 def show():
+
     # Chaves da API do YouTube definidas no .env
     api_key1 = os.getenv('API_YOUTUBE1')
     api_key2 = os.getenv('API_YOUTUBE2')
     
     if 'search_query' not in st.session_state:
         st.session_state['search_query'] = ''
+    if 'search_history' not in st.session_state:
+        st.session_state['search_history'] = []
     
     # Layout: duas colunas (esquerda: YouTube; direita: Top 50 em dois tabs)
     col_left, col_right = st.columns([2, 1])
@@ -168,7 +172,19 @@ def show():
                     )
     
             else:
-                st.warning("Nenhum resultado encontrado. Tente outra pesquisa.")
+                st.warning("Conexão com a YouTube falhou, tente novamente mais tarde ou acesse nas plataformas abaixo.")
+                musica_deezer = link_musica_deezer(search_query)
+                musica_spotify = link_musica_spotify(search_query, client_id, client_secret)
+
+                if musica_deezer or musica_spotify:
+                    st.markdown(
+                        f'<div style="display: flex; align-items: center; gap: 10px;">'
+                        f'{f"<a href=\"{musica_deezer}\" target=\"_blank\"><img src=\"https://www.deezer.com/favicon.ico\" width=\"50\"></a>" if musica_deezer else ""}'
+                        f'{f"<a href=\"{musica_spotify}\" target=\"_blank\"><img src=\"https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png\" width=\"50\"></a>" if musica_spotify else ""}'
+                        '</div>',
+                        unsafe_allow_html=True,
+                        help="Clique para acessar a música"
+                    )
         else:
             st.warning("Digite o nome de uma música ou artista para iniciar a busca.")
 
@@ -200,18 +216,17 @@ def show():
 
         # Feedback visual
         if st.session_state.avaliacao > 0:
-            st.subheader(f"{'★' * st.session_state.avaliacao}{'☆' * (5 - st.session_state.avaliacao)}")
             
             # Mensagens personalizadas conforme a avaliação
             mensagens = {
                 1: "Oh não! Vamos melhorar... 😔",
                 2: "Hmm, precisamos ajustar algumas coisas...",
-                3: "Na média! Vamos para o próximo nível? 🎵",
+                3: "Na média! A próxima será melhor 🎵",
                 4: "Uhul! Quase perfeito! 🎉",
                 5: "INCRÍVEL! Você ama essa música! 🤩🎶"
             }
             
-            st.write(f"Você deu {st.session_state.avaliacao} estrela(s)! {mensagens[st.session_state.avaliacao]}")
+            st.write(f" {mensagens[st.session_state.avaliacao]}")
 
         # Recomendações de nosso sistema
         with st.expander("Recomendações"):

@@ -141,7 +141,7 @@ def show():
                             }
                             st.session_state["search_history"].append(new_entry)
                             st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
-                            ##########################st.session_state["page"] = "busca"
+                            st.session_state["page"] = "busca"
 
                             st.rerun()
                 st.markdown('---')
@@ -201,7 +201,7 @@ def show():
                         st.caption(f"Pesquisado {time_ago(entry['timestamp'])}")
                         if st.button("Pesquisar", key=f"hist_{entry['song']}"):
                             st.session_state["search_query"] = entry["song"]
-                            ################################ st.session_state["page"] = "busca"
+                            st.session_state["page"] = "busca"
                             st.rerun()
                             
             # Navegação
@@ -235,21 +235,28 @@ def show():
                     with cols[0]:
                         st.markdown(f"- {genre.capitalize()}")
                     with cols[1]:
-                        if st.button("✕", key=f"remove_{genre}"):
-                            st.session_state["selected_genres"].remove(genre)
-                            if "genre_recommendations" in st.session_state and genre in st.session_state["genre_recommendations"]:
-                                del st.session_state["genre_recommendations"][genre]
-                            st.rerun()
+                        if len(st.session_state['selected_genres']) <= 1:
+                            pass
+                        else:
+                            if st.button("✕", key=f"remove_{genre}"):
+                                st.session_state["selected_genres"].remove(genre)
+                                if "genre_recommendations" in st.session_state and genre in st.session_state["genre_recommendations"]:
+                                    del st.session_state["genre_recommendations"][genre]
+                                st.rerun()
                 st.markdown("---")
             
             # Seção 2: Todos os Gêneros (com busca)
             st.markdown("### Explorar Gêneros")
             genre_search = st.text_input("Buscar gêneros", placeholder="Digite um gênero...", key="genre_search").lower()
+            
+            # Normaliza os gêneros antes de aplicar o filtro
             filtered_genres = [g for g in genres if genre_search in g.lower()] if genre_search else genres
-            with st.container(height=300):
+
+
+            with st.container(border=True, height=400):
                 for genre in filtered_genres:
                     if genre not in st.session_state.get("selected_genres", []):
-                        if st.button(f"+ {genre}", key=f"add_{genre}", use_container_width=True):
+                        if st.button(f"+ {genre.capitalize()}", key=f"add_{genre}", use_container_width=True):
                             st.session_state["selected_genres"].append(genre)
                             st.rerun()
             
@@ -259,15 +266,15 @@ def show():
             if st.session_state.get("selected_genres"):
                 selected = st.session_state["selected_genres"]
                 genre_similarity = {
-                    "rock": ["alternative-rock", "indie-rock", "hard-rock", "metal", "punk"],
-                    "pop": ["pop-rock", "indie-pop", "dance-pop", "synth-pop", "k-pop"],
+                    "rock": ["rock alternativo", "indie rock", "hard rock", "metal", "punk"],
+                    "pop": ["pop rock", "indie pop", "dance pop", "synth pop", "k-pop"],
                     "jazz": ["blues", "soul", "funk", "r&b", "lounge"],
-                    "electronic": ["edm", "techno", "house", "trance", "dubstep"],
-                    "hiphop": ["rap", "trap", "grime", "drill", "r&b"],
-                    "classical": ["opera", "orchestral", "piano", "baroque", "chamber"],
-                    "country": ["folk", "bluegrass", "americana", "southern-rock"],
+                    "eletrônica": ["edm", "techno", "house", "trance", "dubstep"],
+                    "hip-hop": ["rap", "trap", "grime", "drill", "r&b"],
+                    "clássica": ["ópera", "orquestral", "piano", "barroca", "câmara"],
+                    "country": ["folk", "bluegrass", "americana", "southern rock"],
                     "reggae": ["dub", "ska", "dancehall", "reggaeton"],
-                    "brazil": ["mpb", "samba", "sertanejo", "forro", "pagode"],
+                    "brasileiro": ["mpb", "samba", "sertanejo", "forró", "pagode"],
                 }
                 similar_genres = []
                 for sel in selected:
@@ -287,7 +294,7 @@ def show():
                                 (main for main, subs in genre_similarity.items() if genre in subs and main in selected),
                                 selected[0]
                             )
-                            if st.button(f"{genre.capitalize()}", key=f"rec_{genre}", help=f"Relacionado a {reason.capitalize()}", use_container_width=True):
+                            if st.button(f"{genre}", key=f"rec_{genre}", help=f"Relacionado a {reason.capitalize()}", use_container_width=True):
                                 st.session_state["selected_genres"].append(genre)
                                 st.rerun()
                 else:
@@ -344,9 +351,10 @@ def show():
                                         st.session_state["search_history"] = []
                                     st.session_state["search_history"].append(new_entry)
                                     st.session_state["search_query"] = song
-                                    ############# st.session_state["page"] = "busca"
+                                    st.session_state["page"] = "busca"
                                     st.rerun()
-                        if st.button("Atualizar este gênero", key=f"refresh_{genre}"):
+
+                        if st.button("Novas recomendações", key=f"refresh_{genre}"):
                             st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit= 3)
                             st.rerun()
             else:
