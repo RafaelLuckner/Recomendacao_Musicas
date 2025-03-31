@@ -57,9 +57,10 @@ def show():
                     # Criar um documento vinculado na coleção info_usuarios
                     documento_info = {
                         "usuario_id": resultado.inserted_id,  # Usa o ID do usuário recém-criado
-                        "historico": [],  # Os campos iniciam vazios
                         "generos_escolhidos": [],
-                        "musicas_fav": []  
+                        "musicas_fav": [],
+                        "avaliacao": [],
+                        "historico": []  # Os campos iniciam vazios  
                     }
 
                     # Inserir o documento na coleção info_usuarios
