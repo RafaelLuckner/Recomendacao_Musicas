@@ -58,7 +58,8 @@ def show():
                     documento_info = {
                         "usuario_id": resultado.inserted_id,  # Usa o ID do usuário recém-criado
                         "historico": [],  # Os campos iniciam vazios
-                        "generos_escolhidos": [],   
+                        "generos_escolhidos": [],
+                        "musicas_fav": []  
                     }
 
                     # Inserir o documento na coleção info_usuarios
