@@ -6,7 +6,6 @@
 *__pycache__*
 /data/*
 /img/*
-exploration.ipynb
-*ipynb*
+similaridade.ipynb
 .cache
 /venv
