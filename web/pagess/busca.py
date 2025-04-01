@@ -14,6 +14,12 @@ client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 # -------------------------------
 SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 
+def save_search_history(new_entry):
+    if 'search_history' not in st.session_state:
+        st.session_state['search_history'] = []
+    st.session_state['search_history'].append(new_entry)
+
+
 def search_youtube(query, api_key):
     params = {
         "part": "snippet",
@@ -277,7 +283,7 @@ def show():
                                         "timestamp": time.time(),
                                         # "genre": track["genre"]
                                     }
-                                    st.session_state["search_history"].append(new_entry)
+                                    save_search_history(new_entry)
                                     st.rerun()
         
         with tab_brasil:

@@ -13,69 +13,77 @@ colecao_usuarios = db["usuarios"]
 colecao_info_usuarios = db["info_usuarios"]
 
 def show():
-    st.title("📝 Cadastro")
-    st.write("Crie sua conta para acessar a plataforma.")
-    
-    name = st.text_input("👤 Nome Completo")
-    email = st.text_input("📧 E-mail")
-    password = st.text_input("🔑 Senha", type="password")
-    confirm_password = st.text_input("🔑 Confirme sua Senha", type="password")
-
     col1, col2 = st.columns([1, 1])
-
     with col1:
-        register_button = st.button("Cadastrar")
-    with col2:
-        back_to_login = st.button("Já tem conta? Faça Login")
+        st.title("📝 Cadastro")
+        st.write("Crie sua conta para acessar a plataforma.")
+        
+        name = st.text_input("👤 Nome Completo")
+        email = st.text_input("📧 E-mail")
+        password = st.text_input("🔑 Senha", type="password")
+        confirm_password = st.text_input("🔑 Confirme sua Senha", type="password")
 
-    if register_button:
-        # Verificar se todos os campos foram preenchidos
-        if not (name and email and password and confirm_password):
-            st.error("❌ Por favor, preencha todos os campos!")
-        else:
-            
-            # Verificar se as senhas coincidem
-            if password != confirm_password:
-                st.error("❌ As senhas não coincidem!")
+        col3, col4 = st.columns([1, 2])
+
+        with col3:
+            register_button = st.button("Cadastrar")
+        with col4:
+            back_to_login = st.button("Já tem conta? Faça Login")
+
+        if register_button:
+            # Verificar se todos os campos foram preenchidos
+            if not (name and email and password and confirm_password):
+                st.error("❌ Por favor, preencha todos os campos!")
             else:
-
-                # Verificar se o e-mail já foi cadastrado
-                if colecao_usuarios.find_one({"email": email}) is not None:
-                    st.error("❌ Uma conta com esse e-mail já existe!")
+                
+                # Verificar se as senhas coincidem
+                if password != confirm_password:
+                    st.error("❌ As senhas não coincidem!")
                 else:
 
-                    # Criar um documento (registro) para a coleção usuarios
-                    documento_usuario = {
-                        "nome": name,
-                        "email": email,
-                        "senha": password
-                    }
+                    # Verificar se o e-mail já foi cadastrado
+                    if colecao_usuarios.find_one({"email": email}) is not None:
+                        st.error("❌ Uma conta com esse e-mail já existe!")
+                    else:
 
-                    # Inserir o documento na coleção usuarios
-                    resultado = colecao_usuarios.insert_one(documento_usuario)
+                        # Criar um documento (registro) para a coleção usuarios
+                        documento_usuario = {
+                            "nome": name,
+                            "email": email,
+                            "senha": password
+                        }
 
-                    # Criar um documento vinculado na coleção info_usuarios
-                    documento_info = {
-                        "usuario_id": resultado.inserted_id,  # Usa o ID do usuário recém-criado
-                        "historico": [],  # Os campos iniciam vazios
-                        "generos_escolhidos": [],   
-                    }
+                        # Inserir o documento na coleção usuarios
+                        resultado = colecao_usuarios.insert_one(documento_usuario)
 
-                    # Inserir o documento na coleção info_usuarios
-                    colecao_info_usuarios.insert_one(documento_info)
+                        # Criar um documento vinculado na coleção info_usuarios
+                        documento_info = {
+                            "usuario_id": resultado.inserted_id,  # Usa o ID do usuário recém-criado
+                            "historico": [],  # Os campos iniciam vazios
+                            "generos_escolhidos": [],   
+                        }
 
-                    st.success("✅ Conta criada com sucesso!")
-                    st.session_state["page"] = "select_genres"
-                    st.session_state["user_id"] = str(resultado.inserted_id)  # Armazena o ID na sessão
-                    st.rerun()
+                        # Inserir o documento na coleção info_usuarios
+                        colecao_info_usuarios.insert_one(documento_info)
 
-    if back_to_login:
-        st.session_state["page"] = "login"
-        st.rerun()
-    
-    # Botão de teste (opcional - pode remover)
-    test = st.button("test")
-    if test:
-        st.session_state['name'] = 'teste'
-        st.session_state["page"] = "select_genres"
-        st.rerun()
+                        st.success("✅ Conta criada com sucesso!")
+                        st.session_state["page"] = "select_genres"
+                        st.session_state["user_id"] = str(resultado.inserted_id)  # Armazena o ID na sessão
+                        st.rerun()
+
+        if back_to_login:
+            st.session_state["page"] = "login"
+            st.rerun()
+        
+        # Botão de teste (opcional - pode remover)
+        test = st.button("test")
+        if test:
+            st.session_state['name'] = 'teste'
+            st.session_state["page"] = "select_genres"
+            st.rerun()
+
+    with col2:
+        st.title('')
+        st.subheader('')
+        st.write('')
+        st.image("web/assets/musica.jpg")

@@ -1,6 +1,6 @@
 *.python-version
 *.env*
-
+*lock.*
 
 *test*
 *__pycache__*

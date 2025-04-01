@@ -9,6 +9,12 @@ import os
 import dotenv
 import pandas as pd
 
+
+def save_search_history(new_entry):
+    if 'search_history' not in st.session_state:
+        st.session_state['search_history'] = []
+    st.session_state['search_history'].append(new_entry)
+
 def clean_session_state():
     valid_keys = ["selected_genres",
                   "selected_songs",
@@ -132,6 +138,7 @@ def show():
                     with cols[idx]:
                         st.image(rec["cover_url"])
                         if st.button(f"{rec['song']} - {rec['artist']}", key=f"song_{rec['song']}_{idx}", use_container_width=True):
+
                             new_entry = {
                                 "song": rec["song"],
                                 "artist": rec["artist"],
@@ -139,7 +146,7 @@ def show():
                                 "timestamp": time.time(),
                                 "genre": rec["genre"]
                             }
-                            st.session_state["search_history"].append(new_entry)
+                            save_search_history(new_entry)
                             st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
                             st.session_state["page"] = "busca"
 
@@ -200,7 +207,7 @@ def show():
                             st.write(f"**{entry['song']}**")
                         st.caption(f"Pesquisado {time_ago(entry['timestamp'])}")
                         if st.button("Pesquisar", key=f"hist_{entry['song']}"):
-                            st.session_state["search_query"] = entry["song"]
+                            st.session_state["search_query"] = entry["song"] + " - " + entry["artist"]
                             st.session_state["page"] = "busca"
                             st.rerun()
                             
@@ -347,10 +354,9 @@ def show():
                                         "timestamp": time.time(),
                                         "genre": genre
                                     }
-                                    if "search_history" not in st.session_state:
-                                        st.session_state["search_history"] = []
-                                    st.session_state["search_history"].append(new_entry)
-                                    st.session_state["search_query"] = song
+                                    save_search_history(new_entry)
+
+                                    st.session_state["search_query"] = song + "-" + artist_name
                                     st.session_state["page"] = "busca"
                                     st.rerun()
 
