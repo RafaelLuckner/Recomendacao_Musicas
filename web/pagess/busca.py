@@ -5,6 +5,7 @@ import os
 import time
 import base64
 from streamlit_star_rating import st_star_rating
+import yt_dlp
 
 
 load_dotenv()
@@ -21,16 +22,19 @@ def save_search_history(new_entry):
     st.session_state['search_history'].append(new_entry)
 
 
-def search_youtube(query, api_key):
-    params = {
-        "part": "snippet",
-        "q": 'musica ' + query,
-        "type": "video",
-        "key": api_key,
-        "maxResults": 1
+def search_youtube(query, max_videos=1):
+    ydl_opts = {
+        'quiet': True,
+        'extract_flat': True,
+        'force_generic_extractor': True,
     }
-    response = requests.get(SEARCH_URL, params=params)
-    return response.json()
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            resultados = ydl.extract_info(f"ytsearch{max_videos}:{query}", download=False)
+            return resultados['entries']
+    except Exception as e:
+        print(f"Erro ao buscar vídeo: {e}")
+        return []
 
 def is_quota_error(response):
     if 'error' in response:
@@ -149,30 +153,24 @@ def show():
     with col_left:
         st.title("🎵 Reprodutor de Músicas do YouTube")
         search_query = st.text_input("🔎 Pesquise uma música ou artista:", 
-                                     value=st.session_state['search_query'])
-        if search_query != st.session_state['search_query']:
+                                     value=st.session_state.get('search_query', ''))
+
+        if search_query != st.session_state.get('search_query', ''):
             st.session_state['search_query'] = search_query
             st.rerun()
-            
+        
         if search_query:
             st.write(f"Você está buscando por: **{search_query}**")
-            data = search_youtube(search_query, api_key1)    
-            if is_quota_error(data):
-                st.info("Cota da chave 1 excedida. Utilizando com a chave 2...")
-                data = search_youtube(search_query, api_key2)
-                if is_quota_error(data):
-                    st.error("Quota das duas chaves excedida. Tente novamente mais tarde.")
-                    st.stop()
-            videos = data.get("items", [])
-            if videos:
-                video_id = videos[0]["id"]["videoId"]
-                # st.subheader("▶️ Tocando agora:")
-                st.video(f"https://www.youtube.com/embed/{video_id}?autoplay=0",autoplay=True)
-                musica_deezer = link_musica_deezer(search_query)
-                musica_spotify = link_musica_spotify(search_query, client_id, client_secret)
-    
+            videos = search_youtube('musica ' + search_query)
+            
+            if not videos:
+                st.warning("Nenhum vídeo encontrado ou erro na busca. Tente novamente mais tarde.")
             else:
-                st.warning("Conexão com a YouTube falhou, tente novamente mais tarde ou acesse nas plataformas abaixo.")
+                video_id = videos[0].get('id')
+                st.video(f"https://www.youtube.com/watch?v={video_id}")
+
+            musica_deezer = link_musica_deezer(search_query)
+            musica_spotify = link_musica_spotify(search_query, client_id, client_secret)
 
             # Criação da linha com duas colunas principais
             col_links, col_avaliacao = st.columns([1, 1])
@@ -204,7 +202,7 @@ def show():
                             cursor: pointer;
                         }}
                         .link-musica img {{
-                            width: 70px;
+                            width: 75px;
                         }}
                         </style>
 
@@ -256,7 +254,6 @@ def show():
             
             
             with st.container(height=500):
-                # Organiza os tracks em uma grade com 4 colunas por linha
                 num_cols = 2
                 rows = [tracks[i:i+num_cols] for i in range(0, len(tracks), num_cols)]
                 for row in rows:
@@ -289,7 +286,9 @@ def show():
         
         with tab_brasil:
             display_tracks("Top50Brasil", DEEZER_PLAYLIST_IDS["Top 50 Brasil"])
+            
         with tab_global:
+            
             display_tracks("Top50Global", DEEZER_PLAYLIST_IDS["Top 50 Global"])
 
 

@@ -8,3 +8,4 @@ python-dotenv==1.0.1
 spotipy==2.25.1
 streamlit==1.42.1
 st-star-rating==0.0.6
+yt-dlp
