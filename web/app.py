@@ -1,7 +1,7 @@
 import streamlit as st
 import importlib
 
-st.set_page_config(page_title="Recomendador de Músicas", page_icon='🎶', layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="M4U", page_icon='▶️', layout="wide", initial_sidebar_state="expanded")
 if "page" not in st.session_state:
     st.session_state["page"] = "login"
 

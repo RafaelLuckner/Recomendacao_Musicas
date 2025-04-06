@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 import time
 import base64
+from streamlit_star_rating import st_star_rating
 
 
 load_dotenv()
@@ -123,6 +124,9 @@ def link_musica_spotify(musica, client_id, client_secret):
             return None
     else:
         return None
+
+def atualizar_avaliacao(nota):
+    st.session_state.avaliacao = nota
     
 # -------------------------------
 # INTERFACE STREAMLIT
@@ -166,73 +170,70 @@ def show():
                 st.video(f"https://www.youtube.com/embed/{video_id}?autoplay=0",autoplay=True)
                 musica_deezer = link_musica_deezer(search_query)
                 musica_spotify = link_musica_spotify(search_query, client_id, client_secret)
-
-                if musica_deezer or musica_spotify:
-                    st.markdown(
-                        f'<div style="display: flex; align-items: center; gap: 10px;">'
-                        f'{f"<a href=\"{musica_deezer}\" target=\"_blank\"><img src=\"https://www.deezer.com/favicon.ico\" width=\"50\"></a>" if musica_deezer else ""}'
-                        f'{f"<a href=\"{musica_spotify}\" target=\"_blank\"><img src=\"https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png\" width=\"50\"></a>" if musica_spotify else ""}'
-                        '</div>',
-                        unsafe_allow_html=True,
-                        help="Clique para acessar a música"
-                    )
     
             else:
                 st.warning("Conexão com a YouTube falhou, tente novamente mais tarde ou acesse nas plataformas abaixo.")
-                musica_deezer = link_musica_deezer(search_query)
-                musica_spotify = link_musica_spotify(search_query, client_id, client_secret)
+
+            # Criação da linha com duas colunas principais
+            col_links, col_avaliacao = st.columns([1, 1])
+
+            # Coluna com os links das músicas
+            with col_links:
 
                 if musica_deezer or musica_spotify:
                     st.markdown(
-                        f'<div style="display: flex; align-items: center; gap: 10px;">'
-                        f'{f"<a href=\"{musica_deezer}\" target=\"_blank\"><img src=\"https://www.deezer.com/favicon.ico\" width=\"50\"></a>" if musica_deezer else ""}'
-                        f'{f"<a href=\"{musica_spotify}\" target=\"_blank\"><img src=\"https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png\" width=\"50\"></a>" if musica_spotify else ""}'
-                        '</div>',
-                        unsafe_allow_html=True,
-                        help="Clique para acessar a música"
+                        """
+                        <style>
+                        .link-musica {{
+                            display: flex;
+                            gap: 50px;
+                            align-items: center;
+                            justify-content: center;
+                            margin-top: 10px;
+                        }}
+                        .link-musica a {{
+                            display: inline-block;
+                            padding: 10px;
+                            border-radius: 16px;
+                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                            transition: transform 0.2s ease, box-shadow 0.2s ease;
+                        }}
+                        .link-musica a:hover {{
+                            transform: scale(1.08);
+                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+                            cursor: pointer;
+                        }}
+                        .link-musica img {{
+                            width: 70px;
+                        }}
+                        </style>
+
+                        <div class="link-musica">
+                            {deezer}
+                            {spotify}
+                        </div>
+                        """.format(
+                            deezer=f'<a href="{musica_deezer}" target="_blank"><img src="https://www.deezer.com/favicon.ico" alt="Deezer"></a>' if musica_deezer else '',
+                            spotify=f'<a href="{musica_spotify}" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png" alt="Spotify"></a>' if musica_spotify else ''
+                        ),
+                        unsafe_allow_html=True
                     )
+
+            # Coluna com a avaliação
+            with col_avaliacao:
+                st.write(" Avalie a música:")
+                avaliacao = st_star_rating("", maxValue=5, defaultValue=0, key="star_rating"   )
+
+
+                if avaliacao:
+                    # st.success(f"Você deu {avaliacao} estrela(s)! ⭐")
+                    st.session_state.avaliacao = avaliacao
+
         else:
             st.warning("Digite o nome de uma música ou artista para iniciar a busca.")
 
-        st.write("---")
-        # Configuração inicial do estado da sessão
-        if 'avaliacao' not in st.session_state:
-            st.session_state.avaliacao = 0
 
-        # Função para atualizar a avaliação
-        def atualizar_avaliacao(nota):
-            st.session_state.avaliacao = nota
-        
-        # Layout das estrelas
-        st.write("**Avalie esta música:**")
-        cols = st.columns(10)  # Cria 5 colunas para as estrelas
 
-        # Preenche cada coluna com uma estrela interativa
-        for i in range(1, 6):
-            with cols[i-1]:
-                # Escolhe o emoji com base na avaliação atual
-                emoji = "★" if i <= st.session_state.avaliacao else "☆"
-                st.button(
-                    emoji,
-                    key=f"star_{i}",
-                    on_click=atualizar_avaliacao,
-                    args=(i,),
-                    help=f"Dar {i} estrela{'s' if i > 1 else ''}"
-                )
-
-        # Feedback visual
-        if st.session_state.avaliacao > 0:
-            
-            # Mensagens personalizadas conforme a avaliação
-            mensagens = {
-                1: "Oh não! Vamos melhorar... 😔",
-                2: "Hmm, precisamos ajustar algumas coisas...",
-                3: "Na média! A próxima será melhor 🎵",
-                4: "Uhul! Quase perfeito! 🎉",
-                5: "INCRÍVEL! Você ama essa música! 🤩🎶"
-            }
-            
-            st.write(f" {mensagens[st.session_state.avaliacao]}")
 
         # Recomendações de nosso sistema
         with st.expander("Recomendações"):
@@ -253,7 +254,7 @@ def show():
                 st.error("Não foi possível carregar a playlist.")
                 return
             
-            # Expander para permitir minimizar a lista
+            
             with st.container(height=500):
                 # Organiza os tracks em uma grade com 4 colunas por linha
                 num_cols = 2
@@ -262,9 +263,9 @@ def show():
                     cols = st.columns(len(row))
                     for idx, track in enumerate(row):
                         with cols[idx]:
-                            with st.container( border=False):
+                            with st.container( border= False, height=350):
                                 if track["album_cover"]:
-                                    st.image(track["album_cover"], width=150)
+                                    st.image(track["album_cover"], width=200)
                                 else:
                                     st.text("Sem capa")
                                 if len(track['title'])>10:
