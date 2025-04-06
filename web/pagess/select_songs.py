@@ -21,7 +21,6 @@ def show():
     max_songs = 3
     
     # ======== Seção de Músicas ========
-    st.write("### 🎵 Escolha suas músicas favoritas")
 
     # Campo de busca para músicas
     search_query = st.text_input("🔎 Buscar música", key="song_search")

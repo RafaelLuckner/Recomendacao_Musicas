@@ -28,7 +28,7 @@ def show():
 
     with tab1:
         df = pd.DataFrame(st.session_state['search_history'])
-        st.write(df)
+        # st.write(df)
         if df.empty:
             st.write("Nenhuma pesquisa realizada.")
             return

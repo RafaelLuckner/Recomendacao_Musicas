@@ -59,7 +59,7 @@ def show():
             
             # Verificar se o número de gêneros selecionados não ultrapassa o limite
             if len(st.session_state["selected_genres"]) < max_genres or is_selected:
-                if col.button(f"{'✅' if is_selected else '❌'} {genre}", key=genre, use_container_width=True, help=f"{'Remover' if is_selected else 'Adicionar'} {genre}"):
+                if col.button(f"{'✅' if is_selected else '🎶'} {genre.capitalize()}", key=genre, use_container_width=True, help=f"{'Remover' if is_selected else 'Adicionar'} {genre}"):
                     if is_selected:
                         st.session_state["selected_genres"].remove(genre)
                     else:
