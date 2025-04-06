@@ -1,9 +1,15 @@
 import streamlit as st
 import pandas as pd
 
+@st.cache_data
+def load_data():
+    url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
+    return pd.read_csv(url_data)
+
 def show():
     # Carregar dados
-    data = pd.read_csv('data/data_traduct.csv')
+    # data = pd.read_csv('data/data_traduct.csv')
+    data = load_data()
     genres = data['track_genre'].unique()
 
     # Verificar se os estados existem

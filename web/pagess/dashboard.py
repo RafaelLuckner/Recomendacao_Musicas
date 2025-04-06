@@ -27,12 +27,15 @@ def show():
     tab1, tab2 = st.tabs(["Dashboard", "Dados da sessão"])
 
     with tab1:
+        if 'search_history' not in st.session_state:
+            st.session_state['search_history'] = []
         df = pd.DataFrame(st.session_state['search_history'])
-        # st.write(df)
         if df.empty:
             st.write("Nenhuma pesquisa realizada.")
             return
         else:
+            df['genre'] = df["genre"].fillna('Desconhecido')
+
             # Convertendo timestamp para data legível
             df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
 
@@ -51,70 +54,68 @@ def show():
 
             with col_left:
                 # Gráfico de distribuição dos gêneros
-                with st.container(border=True):
+                with st.container(border=True, height=600):
                     st.subheader("Gêneros mais ouvidos")
-                    fig_genres = px.pie(df, names="genre", hole=0.4)
+                    df_genres = df["genre"].dropna().sort_index(ascending=False)
+                    df_genres.columns = ["genre", "count"]
+        
+                    fig_genres = px.pie(df_genres, names="genre")
                     st.plotly_chart(fig_genres, use_container_width=True)
                 
-                # Gráfico de reproduções ao longo do tempo
-                with st.container(border=True):
-                    st.subheader("⏳ Evolução Temporal das Reproduções")
-                    
-                    # Converter timestamp para datetime
-                    df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
-                    
-                    # Seletor de granularidade temporal
+                with st.container(border=True , height=600):
+                    import pytz
+                    st.subheader("📈 Evolução das Reproduções")
+
+                    # Converter timestamp para datetime com fuso horário brasileiro
+                    fuso_brasil = pytz.timezone("America/Sao_Paulo")
+                    df['datetime'] = pd.to_datetime(df['timestamp'], unit='s').dt.tz_localize('UTC').dt.tz_convert(fuso_brasil)
+
+                    # Opção de agrupamento
                     periodo = st.radio("Agrupar por:", ["Dia", "Hora"], horizontal=True)
-                    
-                    # Determinar período de análise
-                    start_time = df['datetime'].min()
-                    end_time = pd.Timestamp.now()
-                    
-                    # Configurar frequência e formatação
                     freq = 'D' if periodo == "Dia" else 'H'
-                    date_format = '%d/%m/%Y' if periodo == "Dia" else '%d/%m %H:%M'
-                    
-                    # Criar série temporal completa
-                    time_range = pd.date_range(start=start_time.floor(freq), end=end_time.ceil(freq), freq=freq)
+                    date_format = '%d/%m' if freq == 'D' else '%d/%m %Hh'
+
+                    # Geração do período completo
+                    time_range = pd.date_range(
+                        start=df['datetime'].min().floor(freq),
+                        end=pd.Timestamp.now(tz=fuso_brasil).ceil(freq),
+                        freq=freq,
+                        tz=fuso_brasil
+                    )
+
                     df_time = (df.set_index('datetime')
-                            .resample(freq)
-                            .size()
-                            .reindex(time_range, fill_value=0)
-                            .reset_index(name='Reproduções'))
-                    
-                    # Formatar rótulos
-                    df_time['Periodo'] = df_time['index'].dt.strftime(date_format)
-                    
-                    # Criar gráfico
-                    fig = px.bar(df_time, 
-                                x='Periodo', 
-                                y='Reproduções',
-                                labels={'Reproduções': 'Músicas Ouvidas'},
-                                color='Reproduções',
-                                color_continuous_scale='Bluered')
-                    
-                    # Ajustes de layout
+                                .resample(freq)
+                                .size()
+                                .reindex(time_range, fill_value=0)
+                                .reset_index(name='Reproduções'))
+
+                    df_time.rename(columns={'index': 'Periodo'}, inplace=True)
+                    df_time['Periodo'] = df_time['Periodo'].dt.strftime(date_format)
+
+                    # Gráfico de barras
+                    fig = px.bar(
+                        df_time,
+                        x='Periodo',
+                        y='Reproduções',
+                        labels={'Periodo': 'Período', 'Reproduções': 'Reproduções'}
+                    )
+
                     fig.update_layout(
+                        height=350,
+                        margin=dict(t=20, b=20, l=10, r=10),
                         xaxis_title=None,
                         yaxis_title=None,
+                        showlegend=False,
                         hovermode='x unified',
-                        coloraxis_showscale=False,
-                        xaxis={'type': 'category'},
-                        height=400
                     )
-                    
-                    # Tooltip personalizado
-                    hover_template = "<b>%{x}</b><br>Músicas: %{y}" if periodo == "Dia" else "<b>%{x}h</b><br>Músicas: %{y}"
-                    fig.update_traces(
-                        hovertemplate=hover_template,
-                        marker_line_width=0
-                    )
-                    
+
+                    fig.update_traces(marker_color='#1a5276')  # Azul escuro
+
                     st.plotly_chart(fig, use_container_width=True)
 
             with col_right:
                 # Gráfico de artistas mais ouvidos (horizontal)
-                with st.container(border=True):
+                with st.container(border=True, height=600):
                     st.subheader("🎤 Top 5 Artistas Mais Ouvidos")
                     df_artists = df["artist"].dropna().value_counts().reset_index()
                     df_artists.columns = ["artist", "count"]
@@ -157,7 +158,7 @@ def show():
                     st.plotly_chart(fig_artists, use_container_width=True)
                 
                 # Gráfico de músicas mais reproduzidas (horizontal)
-                with st.container(border=True):
+                with st.container(border=True, height=600):
                     st.subheader("🎶 Top 5 Músicas Mais Reproduzidas")
                     df_songs = df["song"].value_counts().reset_index()
                     df_songs.columns = ["song", "count"]
@@ -190,6 +191,7 @@ def show():
                     )
                     
                     st.plotly_chart(fig_songs, use_container_width=True)
+            st.write(df)
 
 
     with tab2:

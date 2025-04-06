@@ -90,11 +90,23 @@ def show():
         with open(image_path, "rb") as img_file:
             img_base64 = base64.b64encode(img_file.read()).decode()
 
-            st.markdown(
-                f"""
-                <div style="display: flex; justify-content: center; align-items: center;">
-                    <img src="data:image/png;base64,{img_base64}" style="max-width: 700px;">
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+        st.markdown(
+            f"""
+            <style>
+                .centered-container {{
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 60vh;  /* Ocupa a altura da tela */
+                }}
+                .centered-container img {{
+                    max-width: 100%;
+                    height: auto;
+                }}
+            </style>
+            <div class="centered-container">
+                <img src="data:image/png;base64,{img_base64}" />
+            </div>
+            """,
+            unsafe_allow_html=True
+        )

@@ -9,6 +9,10 @@ import os
 import dotenv
 import pandas as pd
 
+@st.cache_data
+def load_data():
+    url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
+    return pd.read_csv(url_data)
 
 def save_search_history(new_entry):
     if 'search_history' not in st.session_state:
@@ -93,7 +97,8 @@ def show():
     # Criar abas para navegação
     tab1, tab2, tab3 = st.tabs(["Para você ", " Histórico", " Gêneros"])
 
-    data = pd.read_csv('data/data_traduct.csv')
+    # data = pd.read_csv('data/data_traduct.csv')
+    data = load_data()
     genres = data['track_genre'].unique()
 
     if "selected_genres" not in st.session_state:

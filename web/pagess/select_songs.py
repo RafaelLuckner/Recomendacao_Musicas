@@ -4,8 +4,9 @@ import pandas as pd
 # Cache para carregar os dados uma única vez
 @st.cache_data
 def load_data():
-    return pd.read_csv('data/data_traduct.csv')[['track_name', 'track_genre']].drop_duplicates()
+    url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
 
+    return pd.read_csv(url_data)[['track_name', 'track_genre']].drop_duplicates()
 def show():
     # Carregar dados
     data = load_data()
