@@ -34,7 +34,10 @@ def show():
             st.write("Nenhuma pesquisa realizada.")
             return
         else:
-            df['genre'] = df["genre"].fillna('Desconhecido')
+            if "genre" not in df.columns:
+                df["genre"] = None
+            else:
+                df['genre'] = df["genre"].fillna('Desconhecido')
 
             # Convertendo timestamp para data legível
             df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")

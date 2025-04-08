@@ -66,5 +66,5 @@ def show():
 
     with col2:
         if st.button("Continuar", use_container_width=True):
-            st.session_state["page"] = "home"
+            st.query_params["page"] = "home"
             st.rerun()

@@ -18,8 +18,8 @@ def show():
         st.title("📝 Cadastro")
         st.write("Crie sua conta para acessar a plataforma.")
         
-        name = st.text_input("👤 Nome Completo")
-        email = st.text_input("📧 E-mail")
+        name = st.text_input("👤 Nome Completo", placeholder="Ex: Liam Ribeiro")
+        email = st.text_input("📧 E-mail", placeholder= "Ex: seuemail@gmail.com")
         password = st.text_input("🔑 Senha", type="password")
         confirm_password = st.text_input("🔑 Confirme sua Senha", type="password")
 
@@ -67,19 +67,19 @@ def show():
                         colecao_info_usuarios.insert_one(documento_info)
 
                         st.success("✅ Conta criada com sucesso!")
-                        st.session_state["page"] = "select_genres"
+                        st.query_params["page"] = "select_genres"
                         st.session_state["user_id"] = str(resultado.inserted_id)  # Armazena o ID na sessão
                         st.rerun()
 
         if back_to_login:
-            st.session_state["page"] = "login"
+            st.query_params["page"] = "login"
             st.rerun()
         
         # Botão de teste (opcional - pode remover)
         test = st.button("test")
         if test:
             st.session_state['name'] = 'teste'
-            st.session_state["page"] = "select_genres"
+            st.query_params["page"] = "select_genres"
             st.rerun()
 
     with col2:

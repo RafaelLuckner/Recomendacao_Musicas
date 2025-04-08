@@ -6,6 +6,7 @@ import time
 import base64
 from streamlit_star_rating import st_star_rating
 import yt_dlp
+import difflib
 
 
 load_dotenv()
@@ -78,54 +79,83 @@ DEEZER_PLAYLIST_IDS = {
     "Top 50 Global": "10064140302"   # ID para Top 50 Global
 }
 
-def link_musica_deezer(musica):
-    url = f"https://api.deezer.com/search?q={musica}"
+def link_musica_deezer(musica_completa, limiar_similaridade=0.5):
+    # Separar nome da música e artista
+    partes = musica_completa.split(" - ")
+    nome_musica = partes[0].strip()
+    nome_artista = partes[1].strip() if len(partes) > 1 else ""
+
+    # Fazer a requisição à API do Deezer
+    query = f"{nome_musica} {nome_artista}".strip().replace(" ", "+")
+    url = f"https://api.deezer.com/search?q={query}"
     resposta = requests.get(url)
-    
-    if resposta.status_code == 200:
-        dados = resposta.json()
-        if dados['data']:
-            primeiro_resultado = dados['data'][0]  # Pegamos o primeiro resultado
-            return primeiro_resultado['link']  # Link da música no Deezer
-        else:
-            return None
+
+    if resposta.status_code != 200:
+        return None
+
+    dados = resposta.json()
+    if not dados['data']:
+        return None
+
+    resultado = dados['data'][0]
+    titulo_retornado = resultado['title']
+    artista_retornado = resultado['artist']['name']
+
+    # Medir similaridade com o nome da música e artista
+    sim_nome = difflib.SequenceMatcher(None, nome_musica.lower(), titulo_retornado.lower()).ratio()
+    sim_artista = difflib.SequenceMatcher(None, nome_artista.lower(), artista_retornado.lower()).ratio()
+
+    if sim_nome >= limiar_similaridade and sim_artista >= limiar_similaridade:
+        return resultado['link']  # link da música no Deezer
     else:
         return None
-def link_musica_spotify(musica, client_id, client_secret):
-    # Primeiro, obtém o token de autenticação
+    
+def link_musica_spotify(musica_completa, client_id, client_secret, limiar_similaridade=0.5):
+    # Separa o nome da música e artista
+    partes = musica_completa.split(" - ")
+    nome_musica = partes[0].strip()
+    nome_artista = partes[1].strip() if len(partes) > 1 else ""
+
+    # Autenticação
     auth = f'{client_id}:{client_secret}'
     auth_b64 = base64.b64encode(auth.encode()).decode('utf-8')
     headers = {
         'Authorization': f'Basic {auth_b64}',
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-    data = {
-        'grant_type': 'client_credentials'
-    }
+    data = {'grant_type': 'client_credentials'}
     
-    # Obtenção do token de acesso
     token_url = 'https://accounts.spotify.com/api/token'
     token_resposta = requests.post(token_url, headers=headers, data=data)
     
-    if token_resposta.status_code == 200:
-        token = token_resposta.json()['access_token']
-    else:
+    if token_resposta.status_code != 200:
         return None
 
-    # Agora faz a busca pela música no Spotify
-    search_url = f"https://api.spotify.com/v1/search?q={musica}&type=track&limit=1"
-    search_headers = {
-        'Authorization': f'Bearer {token}'
-    }
+    token = token_resposta.json()['access_token']
+
+    # Busca no Spotify usando nome da música e artista
+    query = f"{nome_musica} {nome_artista}".strip().replace(" ", "+")
+    search_url = f"https://api.spotify.com/v1/search?q={query}&type=track&limit=1"
+    search_headers = {'Authorization': f'Bearer {token}'}
     search_resposta = requests.get(search_url, headers=search_headers)
-    
-    if search_resposta.status_code == 200:
-        dados = search_resposta.json()
-        if dados['tracks']['items']:
-            primeiro_resultado = dados['tracks']['items'][0]  # Pegamos o primeiro resultado
-            return primeiro_resultado['external_urls']['spotify']  # Link da música no Spotify
-        else:
-            return None
+
+    if search_resposta.status_code != 200:
+        return None
+
+    dados = search_resposta.json()
+    if not dados['tracks']['items']:
+        return None
+
+    resultado = dados['tracks']['items'][0]
+    nome_retornado = resultado['name']
+    artistas_retornados = ", ".join([a['name'] for a in resultado['artists']])
+
+    # Verificar similaridade
+    sim_nome = difflib.SequenceMatcher(None, nome_musica.lower(), nome_retornado.lower()).ratio()
+    sim_artista = difflib.SequenceMatcher(None, nome_artista.lower(), artistas_retornados.lower()).ratio()
+
+    if sim_nome >= limiar_similaridade and sim_artista >= limiar_similaridade:
+        return resultado['external_urls']['spotify']
     else:
         return None
 
@@ -153,7 +183,10 @@ def show():
     with col_left:
         st.title("🎵 Reprodutor de Músicas do YouTube")
         search_query = st.text_input("🔎 Pesquise uma música ou artista:", 
-                                     value=st.session_state.get('search_query', ''))
+                                     value=st.session_state.get('search_query', '')
+                                     ,placeholder="Ex: Photograph - Ed Sheeran",
+                                      help="""Formato de pesquisa recomendado: \n
+                        Nome da Música - Nome do Artista""")
 
         if search_query != st.session_state.get('search_query', ''):
             st.session_state['search_query'] = search_query
@@ -169,8 +202,8 @@ def show():
                 video_id = videos[0].get('id')
                 st.video(f"https://www.youtube.com/watch?v={video_id}")
 
-            musica_deezer = link_musica_deezer(search_query)
-            musica_spotify = link_musica_spotify(search_query, client_id, client_secret)
+            musica_deezer = link_musica_deezer(search_query, limiar_similaridade=0.5)
+            musica_spotify = link_musica_spotify(search_query, client_id, client_secret, limiar_similaridade=0.5)
 
             # Criação da linha com duas colunas principais
             col_links, col_avaliacao = st.columns([1, 1])
@@ -211,8 +244,8 @@ def show():
                             {spotify}
                         </div>
                         """.format(
-                            deezer=f'<a href="{musica_deezer}" target="_blank"><img src="https://www.deezer.com/favicon.ico" alt="Deezer"></a>' if musica_deezer else '',
-                            spotify=f'<a href="{musica_spotify}" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png" alt="Spotify"></a>' if musica_spotify else ''
+                            deezer=f'<a href="{musica_deezer}" target="_blank"><img src="https://www.deezer.com/favicon.ico" alt="Deezer"></a>' if musica_deezer else '<span></span>',
+                            spotify=f'<a href="{musica_spotify}" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png" alt="Spotify"></a>' if musica_spotify else '<span></span>'
                         ),
                         unsafe_allow_html=True
                     )
@@ -228,7 +261,7 @@ def show():
                     st.session_state.avaliacao = avaliacao
 
         else:
-            st.warning("Digite o nome de uma música ou artista para iniciar a busca.")
+            st.warning("Digite o nome de uma música e artista para iniciar a busca.")
 
 
 
@@ -273,7 +306,7 @@ def show():
                                 # Chave única para cada botão
                                 unique_key = f"{playlist_key}_{idx}_{track['title']}"
                                 if st.button("▶️ Tocar", key=unique_key):
-                                    st.session_state['search_query'] = f"{track['title']} {track['artist']}"
+                                    st.session_state['search_query'] = f"{track['title']} - {track['artist']}"
                                     new_entry = {
                                         "song": track["title"],
                                         "artist": track["artist"],

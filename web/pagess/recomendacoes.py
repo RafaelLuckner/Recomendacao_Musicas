@@ -8,6 +8,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 import os 
 import dotenv
 import pandas as pd
+from st_click_detector import click_detector
 
 @st.cache_data
 def load_data():
@@ -53,7 +54,7 @@ def get_album_cover_and_artist(song_name, sp):
         return album_cover_url, artist_name
     return None, None
 
-def generate_recommendations(selected_genres, data, sp, limit=6):
+def generate_recommendations(selected_genres, data, sp, limit=10):
     """
     Para cada gênero selecionado, seleciona aleatoriamente 6 músicas e 
     retorna um dicionário em que a chave é o nome da música e o valor é 
@@ -113,60 +114,114 @@ def show():
     if "genre_recommendations" not in st.session_state:
         st.session_state["genre_recommendations"] = {}
 
-    # Tab 1 - Gêneros
     with tab1:
         st.subheader("🎶 Recomendações de Música")
-        
+
         if st.session_state.get("selected_genres"):
             selected_genres = st.session_state["selected_genres"]
             sp = authenticate_spotify()
 
-            # Se o dicionário estiver vazio, gera recomendações
             if not st.session_state["recommended_songs"]:
                 st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp)
 
             rec_dict = st.session_state["recommended_songs"]
             recommended_list = list(rec_dict.values())
+            recommended_subset = recommended_list[:10]
 
-            st.write("Aqui estão suas recomendações:")
+            html = """
+                <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
 
-            # Organiza as músicas em uma grade com 3 colunas e 2 linhas (6 músicas)
-            num_columns = 3
-            num_lines = 2
-            # Seleciona as 6 primeiras músicas (ou ajuste conforme necessário)
-            recommended_subset = recommended_list[:num_columns * num_lines]
-            rows = [recommended_subset[i:i+num_columns] for i in range(0, len(recommended_subset), num_columns)]
-            
-            for row in rows:
-                cols = st.columns(len(row))
-                for idx, rec in enumerate(row):
-                    with cols[idx]:
-                        st.image(rec["cover_url"])
-                        if st.button(f"{rec['song']} - {rec['artist']}", key=f"song_{rec['song']}_{idx}", use_container_width=True):
+                <!-- Botão Esquerda -->
+                <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
+                    <button onclick="document.getElementById('scroll-container').scrollBy({ left: -600, behavior: 'smooth' })"
+                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
+                        outline: none;
+                        box-shadow: none;'>❮</button>
+                </div>
+                
+                <!-- Botão Direita -->
+                <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
+                    <button onclick="document.getElementById('scroll-container').scrollBy({ left: 600, behavior: 'smooth' })"
+                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
+                        outline: none;
+                        box-shadow: none;'>❯</button>
+                </div>
 
-                            new_entry = {
-                                "song": rec["song"],
-                                "artist": rec["artist"],
-                                "cover_url": rec["cover_url"],
-                                "timestamp": time.time(),
-                                "genre": rec["genre"]
-                            }
-                            save_search_history(new_entry)
-                            st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
-                            st.session_state["page"] = "busca"
+                <div id='scroll-container' style='
+                    overflow-x: auto;
+                    white-space: nowrap;
+                    padding: 0px 10px;
+                    scroll-behavior: smooth;
+                    -ms-overflow-style: none;       /* IE 10+ */
+                '>
+                <style>
+                    /* Esconde a barra de rolagem no Chrome, Safari e Opera */
+                    #scroll-container::-webkit-scrollbar {
+                        height: 8px;
+                        background: transparent;  /* cor de fundo da área da barra */
+                    }
+                </style>
+            """
 
-                            st.rerun()
-                st.markdown('---')
+            # Adiciona os álbuns dinamicamente
+            for idx, rec in enumerate(recommended_subset):
+                song = rec["song"]
+                artist = rec["artist"]
+                cover_url = rec["cover_url"]
+                song_id = f"{song} - {artist}".replace("'", "").replace('"', "").replace(" ", "_") + f"_{idx}"
+                display_title = song[:20] + "..." if len(song) > 20 else song
+
+                html += f"""
+                    <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
+                        <a href='#' id='{song_id}' style='text-decoration: none; color: inherit;'>
+                            <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
+                                <img src='{cover_url}' width='200px' style='border-radius: 10px; display: block; height: 200px; object-fit: cover;'>
+                                <div style='
+                                    margin-top: 8px;
+                                    font-size: 14px;
+                                    white-space: normal;
+                                    word-wrap: break-word;
+                                    overflow-wrap: break-word;
+                                    height: 40px;
+                                    line-height: 1.2em;
+                                    overflow: hidden;
+                                '>{display_title}</div>
+                                <div style='font-size: 12px; color: #666;'>{artist}</div>
+                            </div>
+                        </a>
+                    </div>
+                """
+
+            # html += "</div></div>"
+
+            clicked = click_detector(html)
+
+            if clicked:
+                # Recupera o item clicado pela ID
+                for idx, rec in enumerate(recommended_subset):
+                    expected_id = f"{rec['song']} - {rec['artist']}".replace("'", "").replace('"', "").replace(" ", "_") + f"_{idx}"
+                    if clicked == expected_id:
+                        new_entry = {
+                            "song": rec["song"],
+                            "artist": rec["artist"],
+                            "cover_url": rec["cover_url"],
+                            "timestamp": time.time(),
+                            "genre": rec["genre"]
+                        }
+                        save_search_history(new_entry)
+                        st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
+                        st.query_params["page"] = "busca"
+                        st.rerun()
+            else:
+                st.markdown("👆 Clique em uma capa ou no nome da música para explorar.")
+
+            if st.button("🔄 Novas recomendações"):
+                sp = authenticate_spotify()
+                st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp)
+                st.rerun()
+
         else:
             st.warning("Selecione gêneros na aba 'Gêneros' para ver recomendações.")
-
-        if st.button("Novas recomendações"):
-            # Gera novas recomendações dinamicamente (atualizando o dicionário)
-            sp = authenticate_spotify()
-            selected_genres = st.session_state["selected_genres"]
-            st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp)
-            st.rerun()
-            
         
     with tab2:
         st.subheader("📜 Histórico de Pesquisas")
@@ -213,7 +268,7 @@ def show():
                         st.caption(f"Pesquisado {time_ago(entry['timestamp'])}")
                         if st.button("Pesquisar", key=f"hist_{entry['song']}"):
                             st.session_state["search_query"] = entry["song"] + " - " + entry["artist"]
-                            st.session_state["page"] = "busca"
+                            st.query_params["page"] = "busca"
                             st.rerun()
                             
             # Navegação
@@ -323,50 +378,104 @@ def show():
         
         with col2:
             st.subheader("Recomendações por Gênero")
-            # Aqui não usamos cache para economizar processamento; as recomendações são geradas on demand
+
             if st.session_state.get("selected_genres"):
                 sp = authenticate_spotify()
+
                 for genre in st.session_state["selected_genres"]:
-                    with st.expander(f"🎵 {genre.capitalize()}", expanded=True):
-                        # Gera recomendações caso não existam
+                    with st.expander(f"**{genre.capitalize()}**", expanded=True):
+                    
+                        # Gera recomendações se não existirem
                         if st.session_state["genre_recommendations"].get(genre) is None:
-                            st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit= 3)
+                            st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit=10)
 
                         genre_songs = st.session_state["genre_recommendations"][genre]
-                        cols = st.columns(3)
-                        for idx, song in enumerate(genre_songs):
-                            with cols[idx]:
-                                # Evita pesquisar caso a url da imagem já esteja disponível
-                                if st.session_state["genre_recommendations"][genre][song]["cover_url"] is not None:
-                                    cover_url = st.session_state["genre_recommendations"][genre][song]["cover_url"]
-                                    artist_name = st.session_state["genre_recommendations"][genre][song]["artist"]
-                     
-                                else:
-                                    cover_url, artist_name = get_album_cover_and_artist(song, sp)
-                                if cover_url and cover_url.startswith("http"):
-                                    st.image(cover_url)
-                                else:
-                                    st.write("Sem capa")
-                                if len(song)>30:
-                                    song = song[0:30]+'...'
-                                st.markdown(f"**{song}**")
-                                st.caption(f"{artist_name}")
-                                if st.button(f"Tocar", key=f"prev_{genre}_{song}"):
+
+                        html = """
+                            <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
+
+                            <!-- Botão Esquerda -->
+                            <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
+                                <button onclick="document.getElementById('scroll-container').scrollBy({ left: -500, behavior: 'smooth' })"
+                                    style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
+                                    outline: none;
+                                    box-shadow: none;'>❮</button>
+                            </div>
+                            
+                            <!-- Botão Direita -->
+                            <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
+                                <button onclick="document.getElementById('scroll-container').scrollBy({ left: 500, behavior: 'smooth' })"
+                                    style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
+                                    outline: none;
+                                    box-shadow: none;'>❯</button>
+                            </div>
+
+                            <div id='scroll-container' style='
+                                overflow-x: auto;
+                                white-space: nowrap;
+                                padding: 0px 10px;
+                                scroll-behavior: smooth;
+                                -ms-overflow-style: none;       /* IE 10+ */
+                            '>
+                            <style>
+                                /* Esconde a barra de rolagem no Chrome, Safari e Opera */
+                                #scroll-container::-webkit-scrollbar {
+                                    height: 8px;
+                                    background: transparent;  /* cor de fundo da área da barra */
+                                }
+                            </style>
+                        """
+
+                        for idx, (song_title, info) in enumerate(genre_songs.items()):
+                            artist_name = info["artist"]
+                            cover_url = info["cover_url"] or ""
+                            song_id = f"{genre}_{song_title}_{idx}".replace(" ", "_")
+
+                            display_title = song_title[:20] + "..." if len(song_title) > 20 else song_title
+
+                            html += f"""
+                                <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
+                                    <a href='#' id='{song_id}' style='text-decoration: none; color: inherit;'>
+                                        <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
+                                            <img src='{cover_url}' width='200px' style='border-radius: 10px; display: block; height: 200px; object-fit: cover;'>
+                                            <div style='
+                                                margin-top: 8px;
+                                                font-size: 14px;
+                                                white-space: normal;
+                                                word-wrap: break-word;
+                                                overflow-wrap: break-word;
+                                                height: 40px;
+                                                line-height: 1.2em;
+                                                overflow: hidden;
+                                            '>{display_title}</div>
+                                            <div style='font-size: 12px; color: #666;'>{artist_name}</div>
+                                        </div>
+                                    </a>
+                                </div>
+                            """
+
+                        # html += "</div></div>"
+
+                        clicked = click_detector(html)
+
+                        if clicked:
+                            for idx, (song_title, info) in enumerate(genre_songs.items()):
+                                expected_id = f"{genre}_{song_title}_{idx}".replace(" ", "_")
+                                if clicked == expected_id:
                                     new_entry = {
-                                        "song": song,
-                                        "artist": artist_name,
-                                        "cover_url": cover_url,
+                                        "song": song_title,
+                                        "artist": info["artist"],
+                                        "cover_url": info["cover_url"],
                                         "timestamp": time.time(),
                                         "genre": genre
                                     }
                                     save_search_history(new_entry)
-
-                                    st.session_state["search_query"] = song + "-" + artist_name
-                                    st.session_state["page"] = "busca"
+                                    st.session_state["search_query"] = song_title + " - " + info["artist"]
+                                    st.query_params["page"] = "busca"
                                     st.rerun()
 
-                        if st.button("Novas recomendações", key=f"refresh_{genre}"):
-                            st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit= 3)
+                        if st.button("🔁 Novas recomendações", key=f"refresh_{genre}"):
+                            st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit=8)
                             st.rerun()
             else:
                 st.info("Selecione gêneros à esquerda para ver recomendações")

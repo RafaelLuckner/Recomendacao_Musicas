@@ -16,7 +16,7 @@ def show():
         st.title("🔒 Login")
         st.write("Faça login para acessar a plataforma.")
 
-        email = st.text_input("📧 E-mail")
+        email = st.text_input("📧 E-mail", placeholder="Ex: seuemail@gmail.com")
         password = st.text_input("🔑 Senha", type="password")
 
         col3, col4 = st.columns([1, 4])
@@ -36,11 +36,11 @@ def show():
                 st.session_state["password"] = documento["senha"]
                 st.session_state["name"] = documento["nome"]
 
-                st.session_state["page"] = "home"
+                st.query_params["page"] = "home"
                 st.rerun()
 
         if register_button:
-            st.session_state["page"] = "register"
+            st.query_params["page"] = "register"
             st.rerun()
     with col2:
         import base64

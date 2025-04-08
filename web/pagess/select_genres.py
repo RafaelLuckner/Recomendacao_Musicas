@@ -40,7 +40,7 @@ def show():
         # seguir para pagina inicial
         with col2:
             if st.button("Continuar", key="voltar", use_container_width=True):
-                st.session_state["page"] = "select_songs"
+                st.query_params["page"] = "select_songs"
                 st.rerun()
     else:
         st.write("### Gêneros selecionados:")

@@ -23,12 +23,12 @@ def show():
         col3, col4 = st.columns([1, 1])
         with col3:
             if st.button("🎧 Encontre Músicas para Você"):
-                st.session_state["page"] = "recommendations"
+                st.query_params["page"] = "recommendations"
                 st.rerun()
 
         with col4:
             if st.button("🔎 Pesquisar Músicas"):
-                st.session_state["page"] = "busca"
+                st.query_params["page"] = "busca"
                 st.rerun()
 
     with col2:
