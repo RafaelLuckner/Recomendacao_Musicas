@@ -7,6 +7,8 @@ import base64
 from streamlit_star_rating import st_star_rating
 import yt_dlp
 import difflib
+from st_click_detector import click_detector
+
 
 
 load_dotenv()
@@ -245,7 +247,7 @@ def show():
                         </div>
                         """.format(
                             deezer=f'<a href="{musica_deezer}" target="_blank"><img src="https://www.deezer.com/favicon.ico" alt="Deezer"></a>' if musica_deezer else '<span></span>',
-                            spotify=f'<a href="{musica_spotify}" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/2024_Spotify_Logo.svg/1024px-2024_Spotify_Logo.svg.png" alt="Spotify"></a>' if musica_spotify else '<span></span>'
+                            spotify=f'<a href="{musica_spotify}" target="_blank"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/2024_Spotify_logo_without_text.svg/1024px-2024_Spotify_logo_without_text.svg.png" alt="Spotify"></a>' if musica_spotify else '<span></span>'
                         ),
                         unsafe_allow_html=True
                     )
@@ -273,55 +275,78 @@ def show():
     with col_right:
         st.header("🔥 Top 50")
         tab_brasil, tab_global = st.tabs(["Top 50 Brasil", "Top 50 Global"])
-        
-        
+
+
         def display_tracks(playlist_key, playlist_id):
             if f"{playlist_key}_tracks" in st.session_state:
                 tracks = st.session_state[f"{playlist_key}_tracks"]
             else:
                 tracks = get_deezer_playlist_tracks(playlist_id, limit=50)
                 st.session_state[f"{playlist_key}_tracks"] = tracks
+
             if not tracks:
                 st.error("Não foi possível carregar a playlist.")
                 return
-            
-            
+
             with st.container(height=500):
-                num_cols = 2
-                rows = [tracks[i:i+num_cols] for i in range(0, len(tracks), num_cols)]
-                for row in rows:
-                    cols = st.columns(len(row))
-                    for idx, track in enumerate(row):
-                        with cols[idx]:
-                            with st.container( border= False, height=350):
-                                if track["album_cover"]:
-                                    st.image(track["album_cover"], width=200)
-                                else:
-                                    st.text("Sem capa")
-                                if len(track['title'])>10:
-                                    st.markdown(f"**{track['title'][0:10]}...**")
-                                else:
-                                    st.markdown(f"**{track['title']}**")
-                                st.caption(f"{track['artist']}")
-                                # Chave única para cada botão
-                                unique_key = f"{playlist_key}_{idx}_{track['title']}"
-                                if st.button("▶️ Tocar", key=unique_key):
-                                    st.session_state['search_query'] = f"{track['title']} - {track['artist']}"
-                                    new_entry = {
-                                        "song": track["title"],
-                                        "artist": track["artist"],
-                                        "cover_url": track["album_cover"],
-                                        "timestamp": time.time(),
-                                        # "genre": track["genre"]
-                                    }
-                                    save_search_history(new_entry)
-                                    st.rerun()
+                html = "<div style='display: flex; flex-wrap: wrap; gap: 20px;'>"
+
+                for idx, track in enumerate(tracks):
+                    title = track["title"]
+                    artist = track["artist"]
+                    cover_url = track["album_cover"]
+                    track_id = f"{title} - {artist}".replace("'", "").replace('"', "").replace(" ", "_") + f"_{idx}"
+                    display_title = title[:20] + "..." if len(title) > 20 else title
+
+                    html += f"""
+                        <div style='text-align: center; width: 150px;'>
+                            <a href='javascript:void(0);' id='{track_id}' style='text-decoration: none; color: inherit;'>
+                                <div style='height: 200px; display: flex; flex-direction: column; justify-content: flex-start;'>
+                                    <img src='{cover_url}' width='150px' style='border-radius: 10px; display: block; height: 150px; object-fit: cover;'>
+                                    <div style='
+                                        margin-top: 8px;
+                                        font-size: 14px;
+                                        white-space: normal;
+                                        word-wrap: break-word;
+                                        overflow-wrap: break-word;
+                                        line-height: 1.2em;
+                                        overflow: hidden;
+                                    '>{display_title}</div>
+                                    <div style='font-size: 12px; color: #666;'>{artist}</div>
+                                </div>
+                            </a>
+                        </div>
+                    """
+
+                html += "</div>"
+
+                clicked = click_detector(html, key=f"{playlist_key}_click_detector")
+
+                # Processa o clique apenas se ele ainda não foi registrado
+                click_key = f"{playlist_key}_last_click_id"
+                if clicked and st.session_state.get(click_key) != clicked:
+                    st.session_state[click_key] = clicked
+                    
+                    for idx, track in enumerate(tracks):
+                        expected_id = f"{track['title']} - {track['artist']}".replace("'", "").replace('"', "").replace(" ", "_") + f"_{idx}"
+                        if clicked == expected_id:
+                            new_entry = {
+                                "song": track["title"],
+                                "artist": track["artist"],
+                                "cover_url": track["album_cover"],
+                                "timestamp": time.time(),
+                            }
+                            save_search_history(new_entry)
+                            st.session_state["search_query"] = f"{track['title']} - {track['artist']}"
+                            st.rerun()
+
+
+                                    
         
         with tab_brasil:
             display_tracks("Top50Brasil", DEEZER_PLAYLIST_IDS["Top 50 Brasil"])
             
         with tab_global:
-            
             display_tracks("Top50Global", DEEZER_PLAYLIST_IDS["Top 50 Global"])
 
 
