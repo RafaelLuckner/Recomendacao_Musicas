@@ -212,8 +212,6 @@ def show():
                         st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
                         st.query_params["page"] = "busca"
                         st.rerun()
-            else:
-                st.markdown("👆 Clique em uma capa ou no nome da música para explorar.")
 
             if st.button("🔄 Novas recomendações"):
                 sp = authenticate_spotify()
@@ -225,65 +223,90 @@ def show():
         
     with tab2:
         st.subheader("📜 Histórico de Pesquisas")
-        
+
         if "search_history" not in st.session_state:
             st.session_state["search_history"] = []
-            
+
         if st.session_state["search_history"]:
-            # Mantém apenas a entrada mais recente para cada música
+            # Inverte antes de iterar e mantém apenas a entrada mais recente para cada música
             unique_songs = {}
-            for entry in st.session_state["search_history"]:
-                unique_songs[entry['song']] = entry
-            unique_history = sorted(unique_songs.values(), key=lambda x: x['timestamp'], reverse=True)
-            
-            # Configuração de paginação
-            items_per_page = 4
-            total_items = len(unique_history)
-            total_pages = (total_items + items_per_page - 1) // items_per_page
-            
-            if "history_page" not in st.session_state:
-                st.session_state.history_page = 0  # Começa na primeira página
-            
-            # Calcula os itens para a página atual
-            start_idx = st.session_state.history_page * items_per_page
-            end_idx = start_idx + items_per_page
-            current_items = unique_history[start_idx:end_idx]
-            
-            # Exibe os itens em horizontal
-            cols = st.columns(items_per_page)
-            for idx, entry in enumerate(current_items):
-                with cols[idx]:
-                    with st.container():
-                        # Usa diretamente o cover_url da entrada
-                        cover_url = entry.get("cover_url")
-                        if cover_url:
-                            st.image(cover_url)
-                        else:
-                            st.write("Sem capa disponível")
-                        # Exibe o nome da música (limitando o tamanho, se necessário)
-                        if len(entry['song']) > 30:
-                            st.write(f"**{entry['song'][:30]}...**")
-                        else:
-                            st.write(f"**{entry['song']}**")
-                        st.caption(f"Pesquisado {time_ago(entry['timestamp'])}")
-                        if st.button("Pesquisar", key=f"hist_{entry['song']}"):
-                            st.session_state["search_query"] = entry["song"] + " - " + entry["artist"]
-                            st.query_params["page"] = "busca"
-                            st.rerun()
-                            
-            # Navegação
-            col_nav1, col_nav2, col_nav3 = st.columns([1, 1, 4])
-            with col_nav1:
-                if st.session_state.history_page > 0:
-                    if st.button("Anteriores"):
-                        st.session_state.history_page -= 1
-                        st.rerun()
-            with col_nav2:
-                st.caption(f"Página {st.session_state.history_page + 1} de {total_pages}")
-            with col_nav3:
-                if st.session_state.history_page < total_pages - 1:
-                    if st.button("Próximas"):
-                        st.session_state.history_page += 1
+            for entry in reversed(st.session_state["search_history"]):
+                if entry['song'] not in unique_songs:
+                    unique_songs[entry['song']] = entry
+
+            unique_history = list(unique_songs.values())
+
+            html = """
+            <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
+
+                <!-- Botão Esquerda -->
+                <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
+                    <button onclick="document.getElementById('history-scroll').scrollBy({ left: -500, behavior: 'smooth' })"
+                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❮</button>
+                </div>
+
+                <!-- Botão Direita -->
+                <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
+                    <button onclick="document.getElementById('history-scroll').scrollBy({ left: 500, behavior: 'smooth' })"
+                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❯</button>
+                </div>
+
+                <div id='history-scroll' style='
+                    overflow-x: auto;
+                    white-space: nowrap;
+                    padding: 0px 10px;
+                    scroll-behavior: smooth;
+                '>
+                
+                <style>
+                    #history-scroll::-webkit-scrollbar {
+                        height: 8px;
+                        background: transparent; /* fundo da barra igual ao da tela */
+                    }
+
+                    #history-scroll::-webkit-scrollbar-thumb {
+                        background: rgba(150, 150, 150, 0.4);  /* cor sutil e translúcida para o "thumb" */
+                        border-radius: 4px;
+                    }
+
+                    #history-scroll {
+                        scrollbar-color: rgba(150,150,150,0.4) transparent; /* Firefox */
+                        scrollbar-width: thin; /* Firefox */
+                    }
+                </style>
+            """
+
+            for idx, entry in enumerate(unique_history):
+                song = entry['song']
+                artist = entry['artist']
+                cover_url = entry.get("cover_url", "")
+                timestamp = time_ago(entry['timestamp'])
+                display_title = song[:20] + "..." if len(song) > 20 else song
+                item_id = f"history_{song}_{idx}".replace(" ", "_")
+
+                html += f"""
+                    <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
+                        <a href='#' id='{item_id}' style='text-decoration: none; color: inherit;'>
+                            <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
+                                <img src='{cover_url}' width='200px' style='border-radius: 10px; height: 200px; object-fit: cover;'>
+                                <div style='margin-top: 8px; font-size: 14px; overflow: hidden; white-space: normal; height: 40px;'>{display_title}</div>
+                                <div style='font-size: 12px; color: #666;'>{timestamp}</div>
+                            </div>
+                        </a>
+                    </div>
+                """
+
+            html += "</div></div>"
+
+            clicked = click_detector(html, key="history_scroll_click")
+
+            if clicked:
+                for idx, entry in enumerate(unique_history):
+                    song = entry['song']
+                    item_id = f"history_{song}_{idx}".replace(" ", "_")
+                    if clicked == item_id:
+                        st.session_state["search_query"] = f"{entry['song']} - {entry['artist']}"
+                        st.query_params["page"] = "busca"
                         st.rerun()
         else:
             st.write("Nenhuma música pesquisada ainda.")

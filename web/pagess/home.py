@@ -4,6 +4,8 @@ def show():
     # Título da página inicial
     st.title("🎶 Bem-vindo ao Recomendador de Músicas!")
 
+    if 'name' not in st.session_state:
+        st.session_state["name"] = "Usuário" 
     # Texto de boas-vindas
     st.write(f"""
     Bem vindo(a) {st.session_state["name"].capitalize()}!

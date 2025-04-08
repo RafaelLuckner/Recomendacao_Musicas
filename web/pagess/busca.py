@@ -273,7 +273,7 @@ def show():
             st.write("Em desenvolvimento...")
     # -------- COLUNA DIREITA: Top 50 com Tabs e expanders --------
     with col_right:
-        st.header("🔥 Top 50")
+        st.title("🔥 Top 50")
         tab_brasil, tab_global = st.tabs(["Top 50 Brasil", "Top 50 Global"])
 
 
@@ -299,10 +299,10 @@ def show():
                     display_title = title[:20] + "..." if len(title) > 20 else title
 
                     html += f"""
-                        <div style='text-align: center; width: 150px;'>
+                        <div style='text-align: center; width: 140px;'>
                             <a href='javascript:void(0);' id='{track_id}' style='text-decoration: none; color: inherit;'>
                                 <div style='height: 200px; display: flex; flex-direction: column; justify-content: flex-start;'>
-                                    <img src='{cover_url}' width='150px' style='border-radius: 10px; display: block; height: 150px; object-fit: cover;'>
+                                    <img src='{cover_url}' width='140px' style='border-radius: 10px; display: block; height: 140px; object-fit: cover;'>
                                     <div style='
                                         margin-top: 8px;
                                         font-size: 14px;
@@ -326,7 +326,7 @@ def show():
                 click_key = f"{playlist_key}_last_click_id"
                 if clicked and st.session_state.get(click_key) != clicked:
                     st.session_state[click_key] = clicked
-                    
+
                     for idx, track in enumerate(tracks):
                         expected_id = f"{track['title']} - {track['artist']}".replace("'", "").replace('"', "").replace(" ", "_") + f"_{idx}"
                         if clicked == expected_id:
