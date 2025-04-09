@@ -289,7 +289,14 @@ def show():
                 return
 
             with st.container(height=500):
-                html = "<div style='display: flex; flex-wrap: wrap; gap: 20px;'>"
+                html = """
+                        <div style='
+                            display: flex;
+                            justify-content: center;
+                            flex-wrap: wrap;
+                            gap: 20px;  /* espaço entre os cards */
+                        '>
+                        """
 
                 for idx, track in enumerate(tracks):
                     title = track["title"]
@@ -299,7 +306,7 @@ def show():
                     display_title = title[:30] + "..." if len(title) > 20 else title
 
                     html += f"""
-                        <div style='text-align: center; width: 140px;'>
+                        <div style='text-align: center; width: 125px;'>
                             <a href='javascript:void(0);' id='{track_id}' style='text-decoration: none; color: inherit;'>
                                 <div style='height: 200px; display: flex; flex-direction: column; justify-content: flex-start;'>
                                     <div style='
@@ -311,7 +318,7 @@ def show():
                                     ' 
                                     onmouseover="this.style.transform='scale(1.1)'" 
                                     onmouseout="this.style.transform='scale(1)'">
-                                    <img src='{cover_url}' width='140px' style='border-radius: 10px; display: block; height: 140px; object-fit: cover;'>
+                                        <img src='{cover_url}' width='140px' style='border-radius: 10px; display: block; height: 140px; object-fit: cover;'>
                                     </div> 
                                     <div style='
                                         margin-top: 8px;
@@ -319,7 +326,7 @@ def show():
                                         white-space: normal;
                                         word-wrap: break-word;
                                         overflow-wrap: break-word;
-                                        line-height: 1.2em;
+                                        line-height: 1em;
                                         overflow: hidden;
                                     '>{display_title}</div>
                                     <div style='font-size: 12px; color: #666;'>{artist}</div>
@@ -327,8 +334,6 @@ def show():
                             </a>
                         </div>
                     """
-
-                html += "</div>"
 
                 clicked = click_detector(html, key=f"{playlist_key}_click_detector")
 

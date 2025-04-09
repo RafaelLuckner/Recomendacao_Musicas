@@ -54,7 +54,7 @@ def get_album_cover_and_artist(song_name, sp):
         return album_cover_url, artist_name
     return None, None
 
-def generate_recommendations(selected_genres, data, sp, limit=10):
+def generate_recommendations(selected_genres, data, sp, limit=20):
     """
     Para cada gênero selecionado, seleciona aleatoriamente 6 músicas e 
     retorna um dicionário em que a chave é o nome da música e o valor é 
@@ -204,11 +204,11 @@ def show():
             sp = authenticate_spotify()
 
             if not st.session_state["recommended_songs"]:
-                st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp)
+                st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp, limit=15)
 
             rec_dict = st.session_state["recommended_songs"]
             recommended_list = list(rec_dict.values())
-            recommended_subset = recommended_list[:10]
+            recommended_subset = recommended_list
 
             html = html_scroll_container(scroll_amount=600)
 
@@ -243,10 +243,10 @@ def show():
                         st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
                         st.query_params["page"] = "busca"
                         st.rerun()
-
-            if st.button("🔄 Novas recomendações"):
+            
+            if st.button("Novas recomendações"):
                 sp = authenticate_spotify()
-                st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp)
+                st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp, limit=10)
                 st.rerun()
 
         else:

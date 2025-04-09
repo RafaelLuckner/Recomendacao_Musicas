@@ -1,7 +1,7 @@
 import streamlit as st
 import importlib
 
-st.set_page_config(page_title="M4U", page_icon='▶️', layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="M4U", page_icon='web/assets/logo_icon.png', layout="wide", initial_sidebar_state="expanded")
 
 # 🚀 Recuperar parâmetro da URL com nova API
 query_params = st.query_params
