@@ -60,6 +60,8 @@ def generate_recommendations(selected_genres, data, sp, limit=10):
     retorna um dicionário em que a chave é o nome da música e o valor é 
     um dicionário com: song, genre, artist e cover_url.
     """
+    # Limita o número de músicas por gênero
+    limit = int(limit/len(selected_genres))
     recommendations = {}
     for genre in selected_genres:
         genre_songs = data[data['track_genre'] == genre]
@@ -91,7 +93,87 @@ def time_ago(timestamp):
         return f"{int(diff/3600)} horas atrás"
     else:
         return f"{int(diff/86400)} dias atrás"
+    
 
+# HTML
+def html_images_display(id, title, artist, cover_url):
+    return f"""
+        <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
+            <a href='#' id='{id}' style='text-decoration: none; color: inherit;'>
+                <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
+                    <div style='
+                        width: 200px;
+                        height: 200px;
+                        overflow: hidden;
+                        border-radius: 20px;
+                        transition: transform 0.3s ease;
+                    ' 
+                    onmouseover="this.style.transform='scale(1.1)'" 
+                    onmouseout="this.style.transform='scale(1)'">
+                        <img src='{cover_url}' width='200px' 
+                            style='
+                                border-radius: 10px; 
+                                display: block; 
+                                height: 200px; 
+                                object-fit: cover;
+                                pointer-events: none;
+                            '>
+                    </div>                                            
+                    <div style='
+                        margin-top: 8px;
+                        font-size: 14px;
+                        white-space: normal;
+                        word-wrap: break-word;
+                        overflow-wrap: break-word;
+                        height: 15px;
+                        line-height: 1.2em;
+                        overflow: hidden;
+                    '>{title}</div>
+                    <div style='font-size: 12px; color: #666;'>{artist}</div>
+                </div>
+            </a>
+        </div>
+    """
+
+def html_scroll_container(scroll_amount=500):
+    return f"""
+            <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
+
+                <!-- Botão Esquerda -->
+                <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
+                    <button onclick="document.getElementById('history-scroll').scrollBy({{ left: {-scroll_amount}, behavior: 'smooth' }})"
+                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❮</button>
+                </div>
+
+                <!-- Botão Direita -->
+                <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
+                    <button onclick="document.getElementById('history-scroll').scrollBy({{ left: {scroll_amount}, behavior: 'smooth' }})"
+                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❯</button>
+                </div>
+
+                <div id='history-scroll' style='
+                    overflow-x: auto;
+                    white-space: nowrap;
+                    padding: 0px 10px;
+                    scroll-behavior: smooth;
+                '>
+            <style>
+                #history-scroll::-webkit-scrollbar {{
+                    height: 8px;
+                    background: transparent; /* fundo da barra igual ao da tela */
+                }}
+
+                #history-scroll::-webkit-scrollbar-thumb {{
+                    background: rgba(150, 150, 150, 0.4);  /* cor sutil e translúcida para o "thumb" */
+                    border-radius: 4px;
+                }}
+
+                #history-scroll {{
+                    scrollbar-color: rgba(150,150,150,0.4) transparent; /* Firefox */
+                    scrollbar-width: thin; /* Firefox */
+                }}
+            </style>
+        """
 def show():
     dotenv.load_dotenv()
 
@@ -128,40 +210,7 @@ def show():
             recommended_list = list(rec_dict.values())
             recommended_subset = recommended_list[:10]
 
-            html = """
-                <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
-
-                <!-- Botão Esquerda -->
-                <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
-                    <button onclick="document.getElementById('scroll-container').scrollBy({ left: -600, behavior: 'smooth' })"
-                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
-                        outline: none;
-                        box-shadow: none;'>❮</button>
-                </div>
-                
-                <!-- Botão Direita -->
-                <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
-                    <button onclick="document.getElementById('scroll-container').scrollBy({ left: 600, behavior: 'smooth' })"
-                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
-                        outline: none;
-                        box-shadow: none;'>❯</button>
-                </div>
-
-                <div id='scroll-container' style='
-                    overflow-x: auto;
-                    white-space: nowrap;
-                    padding: 0px 10px;
-                    scroll-behavior: smooth;
-                    -ms-overflow-style: none;       /* IE 10+ */
-                '>
-                <style>
-                    /* Esconde a barra de rolagem no Chrome, Safari e Opera */
-                    #scroll-container::-webkit-scrollbar {
-                        height: 8px;
-                        background: transparent;  /* cor de fundo da área da barra */
-                    }
-                </style>
-            """
+            html = html_scroll_container(scroll_amount=600)
 
             # Adiciona os álbuns dinamicamente
             for idx, rec in enumerate(recommended_subset):
@@ -171,26 +220,8 @@ def show():
                 song_id = f"{song} - {artist}".replace("'", "").replace('"', "").replace(" ", "_") + f"_{idx}"
                 display_title = song[:20] + "..." if len(song) > 20 else song
 
-                html += f"""
-                    <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
-                        <a href='#' id='{song_id}' style='text-decoration: none; color: inherit;'>
-                            <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
-                                <img src='{cover_url}' width='200px' style='border-radius: 10px; display: block; height: 200px; object-fit: cover;'>
-                                <div style='
-                                    margin-top: 8px;
-                                    font-size: 14px;
-                                    white-space: normal;
-                                    word-wrap: break-word;
-                                    overflow-wrap: break-word;
-                                    height: 40px;
-                                    line-height: 1.2em;
-                                    overflow: hidden;
-                                '>{display_title}</div>
-                                <div style='font-size: 12px; color: #666;'>{artist}</div>
-                            </div>
-                        </a>
-                    </div>
-                """
+                html += html_images_display(song_id, display_title, artist, cover_url)
+
 
             # html += "</div></div>"
 
@@ -236,45 +267,7 @@ def show():
 
             unique_history = list(unique_songs.values())
 
-            html = """
-            <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
-
-                <!-- Botão Esquerda -->
-                <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
-                    <button onclick="document.getElementById('history-scroll').scrollBy({ left: -500, behavior: 'smooth' })"
-                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❮</button>
-                </div>
-
-                <!-- Botão Direita -->
-                <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
-                    <button onclick="document.getElementById('history-scroll').scrollBy({ left: 500, behavior: 'smooth' })"
-                        style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❯</button>
-                </div>
-
-                <div id='history-scroll' style='
-                    overflow-x: auto;
-                    white-space: nowrap;
-                    padding: 0px 10px;
-                    scroll-behavior: smooth;
-                '>
-                
-                <style>
-                    #history-scroll::-webkit-scrollbar {
-                        height: 8px;
-                        background: transparent; /* fundo da barra igual ao da tela */
-                    }
-
-                    #history-scroll::-webkit-scrollbar-thumb {
-                        background: rgba(150, 150, 150, 0.4);  /* cor sutil e translúcida para o "thumb" */
-                        border-radius: 4px;
-                    }
-
-                    #history-scroll {
-                        scrollbar-color: rgba(150,150,150,0.4) transparent; /* Firefox */
-                        scrollbar-width: thin; /* Firefox */
-                    }
-                </style>
-            """
+            html = html_scroll_container(scroll_amount=600)
 
             for idx, entry in enumerate(unique_history):
                 song = entry['song']
@@ -284,19 +277,9 @@ def show():
                 display_title = song[:20] + "..." if len(song) > 20 else song
                 item_id = f"history_{song}_{idx}".replace(" ", "_")
 
-                html += f"""
-                    <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
-                        <a href='#' id='{item_id}' style='text-decoration: none; color: inherit;'>
-                            <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
-                                <img src='{cover_url}' width='200px' style='border-radius: 10px; height: 200px; object-fit: cover;'>
-                                <div style='margin-top: 8px; font-size: 14px; overflow: hidden; white-space: normal; height: 40px;'>{display_title}</div>
-                                <div style='font-size: 12px; color: #666;'>{timestamp}</div>
-                            </div>
-                        </a>
-                    </div>
-                """
+                html += html_images_display(item_id, display_title, artist, cover_url)
 
-            html += "</div></div>"
+            # html += "</div></div>"
 
             clicked = click_detector(html, key="history_scroll_click")
 
@@ -414,40 +397,8 @@ def show():
 
                         genre_songs = st.session_state["genre_recommendations"][genre]
 
-                        html = """
-                            <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
+                        html = html_scroll_container(scroll_amount=400)
 
-                            <!-- Botão Esquerda -->
-                            <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
-                                <button onclick="document.getElementById('scroll-container').scrollBy({ left: -500, behavior: 'smooth' })"
-                                    style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
-                                    outline: none;
-                                    box-shadow: none;'>❮</button>
-                            </div>
-                            
-                            <!-- Botão Direita -->
-                            <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
-                                <button onclick="document.getElementById('scroll-container').scrollBy({ left: 500, behavior: 'smooth' })"
-                                    style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;
-                                    outline: none;
-                                    box-shadow: none;'>❯</button>
-                            </div>
-
-                            <div id='scroll-container' style='
-                                overflow-x: auto;
-                                white-space: nowrap;
-                                padding: 0px 10px;
-                                scroll-behavior: smooth;
-                                -ms-overflow-style: none;       /* IE 10+ */
-                            '>
-                            <style>
-                                /* Esconde a barra de rolagem no Chrome, Safari e Opera */
-                                #scroll-container::-webkit-scrollbar {
-                                    height: 8px;
-                                    background: transparent;  /* cor de fundo da área da barra */
-                                }
-                            </style>
-                        """
 
                         for idx, (song_title, info) in enumerate(genre_songs.items()):
                             artist_name = info["artist"]
@@ -456,26 +407,7 @@ def show():
 
                             display_title = song_title[:20] + "..." if len(song_title) > 20 else song_title
 
-                            html += f"""
-                                <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
-                                    <a href='#' id='{song_id}' style='text-decoration: none; color: inherit;'>
-                                        <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
-                                            <img src='{cover_url}' width='200px' style='border-radius: 10px; display: block; height: 200px; object-fit: cover;'>
-                                            <div style='
-                                                margin-top: 8px;
-                                                font-size: 14px;
-                                                white-space: normal;
-                                                word-wrap: break-word;
-                                                overflow-wrap: break-word;
-                                                height: 40px;
-                                                line-height: 1.2em;
-                                                overflow: hidden;
-                                            '>{display_title}</div>
-                                            <div style='font-size: 12px; color: #666;'>{artist_name}</div>
-                                        </div>
-                                    </a>
-                                </div>
-                            """
+                            html += html_images_display(song_id, display_title, artist_name, cover_url) 
 
                         # html += "</div></div>"
 

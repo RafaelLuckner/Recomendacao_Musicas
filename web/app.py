@@ -19,7 +19,7 @@ def switch_page(page_name):
 
 # 🔘 Menu lateral (só após login)
 if st.session_state["page"] not in ["login", "register", 'select_genres', 'select_songs']:
-    st.sidebar.image("web/assets/logo_vazada_m4u_laranja.png", width=300)
+    st.sidebar.image("web/assets/logo_vazada_m4u_laranja.png", width=300, use_container_width=True)
     if st.sidebar.button("🏠 Página Inicial", use_container_width=True):
         switch_page("home")
     if st.sidebar.button("🎶 Suas Músicas", use_container_width=True):

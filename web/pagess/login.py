@@ -19,12 +19,16 @@ def show():
         email = st.text_input("📧 E-mail", placeholder="Ex: seuemail@gmail.com")
         password = st.text_input("🔑 Senha", type="password")
 
-        col3, col4 = st.columns([1, 4])
+        col3, col4, col5 = st.columns([3, 4, 6])
         
         with col3:
             login_button = st.button("Entrar")
         with col4:
             register_button = st.button("Cadastrar")
+        with col5:
+            esqueci_a_senha_button = st.button("Esqueci minha senha")
+
+
 
         if login_button:
             # Verificar se o e-mail e senha existem no banco de dados

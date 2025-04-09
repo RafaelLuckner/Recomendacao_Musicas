@@ -202,7 +202,7 @@ def show():
                 st.warning("Nenhum vídeo encontrado ou erro na busca. Tente novamente mais tarde.")
             else:
                 video_id = videos[0].get('id')
-                st.video(f"https://www.youtube.com/watch?v={video_id}")
+                st.video(f"https://www.youtube.com/watch?v={video_id}",loop=True)
 
             musica_deezer = link_musica_deezer(search_query, limiar_similaridade=0.5)
             musica_spotify = link_musica_spotify(search_query, client_id, client_secret, limiar_similaridade=0.5)
@@ -296,13 +296,23 @@ def show():
                     artist = track["artist"]
                     cover_url = track["album_cover"]
                     track_id = f"{title} - {artist}".replace("'", "").replace('"', "").replace(" ", "_") + f"_{idx}"
-                    display_title = title[:20] + "..." if len(title) > 20 else title
+                    display_title = title[:30] + "..." if len(title) > 20 else title
 
                     html += f"""
                         <div style='text-align: center; width: 140px;'>
                             <a href='javascript:void(0);' id='{track_id}' style='text-decoration: none; color: inherit;'>
                                 <div style='height: 200px; display: flex; flex-direction: column; justify-content: flex-start;'>
+                                    <div style='
+                                        width: 140px;
+                                        height: 140px;
+                                        overflow: hidden;
+                                        border-radius: 20px;
+                                        transition: transform 0.3s ease;
+                                    ' 
+                                    onmouseover="this.style.transform='scale(1.1)'" 
+                                    onmouseout="this.style.transform='scale(1)'">
                                     <img src='{cover_url}' width='140px' style='border-radius: 10px; display: block; height: 140px; object-fit: cover;'>
+                                    </div> 
                                     <div style='
                                         margin-top: 8px;
                                         font-size: 14px;
