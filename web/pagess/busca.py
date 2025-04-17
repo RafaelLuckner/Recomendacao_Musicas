@@ -8,7 +8,13 @@ from streamlit_star_rating import st_star_rating
 import yt_dlp
 import difflib
 from st_click_detector import click_detector
+from pymongo import MongoClient
+from datetime import datetime
 
+# Configuração do MongoDB (global)
+client = MongoClient("mongodb+srv://leticia:ADMIN@m4u.5gwte.mongodb.net/?retryWrites=true&w=majority&appName=M4U")
+db = client["M4U"]
+collection = db["info_usuarios"]
 
 
 load_dotenv()
@@ -20,9 +26,15 @@ client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 
 def save_search_history(new_entry):
-    if 'search_history' not in st.session_state:
-        st.session_state['search_history'] = []
-    st.session_state['search_history'].append(new_entry)
+    try:
+        new_entry["timestamp"] = datetime.now()
+        collection.update_one(
+            {"user_id": "usuario_unico"},  # Ajuste conforme necessário
+            {"$push": {"historico": new_entry}},
+            upsert=True
+        )
+    except Exception as e:
+        st.error(f"Erro ao salvar histórico: {e}")
 
 
 def search_youtube(query, max_videos=1):
