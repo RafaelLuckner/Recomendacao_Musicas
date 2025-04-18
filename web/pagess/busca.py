@@ -9,13 +9,8 @@ import yt_dlp
 import difflib
 from st_click_detector import click_detector
 from pymongo import MongoClient
-from datetime import datetime
 
-# Configuração do MongoDB (global)
-client = MongoClient("mongodb+srv://leticia:ADMIN@m4u.5gwte.mongodb.net/?retryWrites=true&w=majority&appName=M4U")
-db = client["M4U"]
-collection = db["info_usuarios"]
-
+import sources
 
 load_dotenv()
 client_id = os.getenv("SPOTIPY_CLIENT_ID")
@@ -25,17 +20,8 @@ client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 # -------------------------------
 SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 
-def save_search_history(new_entry):
-    try:
-        new_entry["timestamp"] = datetime.now()
-        collection.update_one(
-            {"user_id": "usuario_unico"},  # Ajuste conforme necessário
-            {"$push": {"historico": new_entry}},
-            upsert=True
-        )
-    except Exception as e:
-        st.error(f"Erro ao salvar histórico: {e}")
-
+def save_search_history(new_entry, user_id):
+    sources.save_search_history(new_entry, user_id)
 
 def search_youtube(query, max_videos=1):
     ydl_opts = {
@@ -181,14 +167,22 @@ def atualizar_avaliacao(nota):
 # -------------------------------
 def show():
 
+
     # Chaves da API do YouTube definidas no .env
     api_key1 = os.getenv('API_YOUTUBE1')
     api_key2 = os.getenv('API_YOUTUBE2')
     
+
+    if 'user_id' not in st.session_state or st.session_state["user_id"] == None:
+        user_id = sources.search_user_id_mongodb(st.session_state["email"])
+        st.session_state["user_id"] = user_id
     if 'search_query' not in st.session_state:
         st.session_state['search_query'] = ''
     if 'search_history' not in st.session_state:
         st.session_state['search_history'] = []
+    if 'user_id' not in st.session_state:
+        user_id = sources.search_user_id_mongodb(st.session_state["email"])
+        st.session_state["user_id"] = user_id
     
     # Layout: duas colunas (esquerda: YouTube; direita: Top 50 em dois tabs)
     col_left, col_right = st.columns([2, 1])
@@ -363,7 +357,7 @@ def show():
                                 "cover_url": track["album_cover"],
                                 "timestamp": time.time(),
                             }
-                            save_search_history(new_entry)
+                            save_search_history(new_entry, st.session_state["user_id"])
                             st.session_state["search_query"] = f"{track['title']} - {track['artist']}"
                             st.rerun()
 

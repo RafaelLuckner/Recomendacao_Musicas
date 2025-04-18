@@ -1,5 +1,8 @@
 import streamlit as st
 from pymongo import MongoClient
+from sources import search_user_id_mongodb
+from sources import search_history_user
+from sources import select_colection
 
 # Conectar ao servidor MongoDB local
 client = MongoClient("mongodb+srv://leticia:ADMIN@m4u.5gwte.mongodb.net/?retryWrites=true&w=majority&appName=M4U")
@@ -8,8 +11,11 @@ client = MongoClient("mongodb+srv://leticia:ADMIN@m4u.5gwte.mongodb.net/?retryWr
 db = client["M4U"]
 
 # Selecionar a coleção (tabela)
-colecao = db["usuarios"]
+colecao_users = db["usuarios"]
 
+colecao_info_users = db["info_usuarios"]
+
+    
 def show():
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -32,14 +38,14 @@ def show():
 
         if login_button:
             # Verificar se o e-mail e senha existem no banco de dados
-            documento = colecao.find_one({"email": email, "senha": password})
+            documento = colecao_users.find_one({"email": email, "senha": password})
             if documento is None:
                 st.error("❌ E-mail ou senha incorretos!")
             else:
                 st.session_state["email"] = documento["email"]
                 st.session_state["password"] = documento["senha"]
                 st.session_state["name"] = documento["nome"]
-
+                st.query_params["email"] = documento["email"]
                 st.query_params["page"] = "home"
                 st.rerun()
 

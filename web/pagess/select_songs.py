@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import pymongo
+from sources import initial_save_mongodb
 
 # Cache para carregar os dados uma única vez
 @st.cache_data
@@ -7,6 +9,8 @@ def load_data():
     url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
 
     return pd.read_csv(url_data)[['track_name', 'track_genre']].drop_duplicates()
+
+
 def show():
     # Carregar dados
     data = load_data()
@@ -66,5 +70,6 @@ def show():
 
     with col2:
         if st.button("Continuar", use_container_width=True):
+            initial_save_mongodb("musicas_escolhidas", st.session_state["selected_songs"])
             st.query_params["page"] = "home"
             st.rerun()

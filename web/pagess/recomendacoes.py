@@ -1,24 +1,23 @@
-from datetime import date
-import datetime
-from datetime import datetime
-import streamlit as st
-import time
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
 import os 
+import time
 import dotenv
+import spotipy
 import pandas as pd
+import streamlit as st
+from datetime import datetime, date
+from spotipy.oauth2 import SpotifyClientCredentials
+
 from st_click_detector import click_detector
+
+import sources
 
 @st.cache_data
 def load_data():
     url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
     return pd.read_csv(url_data)
 
-def save_search_history(new_entry):
-    if 'search_history' not in st.session_state:
-        st.session_state['search_history'] = []
-    st.session_state['search_history'].append(new_entry)
+def save_search_history(new_entry, user_id):
+    sources.save_search_history(new_entry, user_id)
 
 def clean_session_state():
     valid_keys = ["selected_genres",
@@ -96,7 +95,7 @@ def time_ago(timestamp):
     
 
 # HTML
-def html_images_display(id, title, artist, cover_url):
+def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=False):
     return f"""
         <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
             <a href='#' id='{id}' style='text-decoration: none; color: inherit;'>
@@ -129,7 +128,7 @@ def html_images_display(id, title, artist, cover_url):
                         line-height: 1.2em;
                         overflow: hidden;
                     '>{title}</div>
-                    <div style='font-size: 12px; color: #666;'>{artist}</div>
+                    <div style='font-size: 12px; color: #666;'>{time_watch if show_time else artist }</div>
                 </div>
             </a>
         </div>
@@ -175,6 +174,7 @@ def html_scroll_container(scroll_amount=500):
             </style>
         """
 def show():
+
     dotenv.load_dotenv()
 
     # Criar abas para navegação
@@ -184,19 +184,25 @@ def show():
     data = load_data()
     genres = data['track_genre'].unique()
 
-    if "selected_genres" not in st.session_state:
-        st.session_state["selected_genres"] = []
+    if 'user_id' not in st.session_state or st.session_state["user_id"] == None:
+        user_id = sources.search_user_id_mongodb(st.session_state["email"])
+        st.session_state["user_id"] = user_id
+    if "selected_genres" not in st.session_state or st.session_state["selected_genres"] == []:
+        st.session_state["selected_genres"] = sources.load_info_user(st.session_state["user_id"], "generos_escolhidos")
     if "search_query" not in st.session_state:
         st.session_state["search_query"] = ""
-    if "search_history" not in st.session_state:
-        st.session_state["search_history"] = []
+    if "search_history" not in st.session_state or st.session_state["search_history"] == []:
+        st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
     # Inicializa nosso dicionário de recomendações
     if "recommended_songs" not in st.session_state:
         st.session_state["recommended_songs"] = {}
     if "genre_recommendations" not in st.session_state:
         st.session_state["genre_recommendations"] = {}
 
+
+
     with tab1:
+
         st.subheader("🎶 Recomendações de Música")
 
         if st.session_state.get("selected_genres"):
@@ -239,7 +245,8 @@ def show():
                             "timestamp": time.time(),
                             "genre": rec["genre"]
                         }
-                        save_search_history(new_entry)
+                        save_search_history(new_entry, st.session_state["user_id"])
+                        st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
                         st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
                         st.query_params["page"] = "busca"
                         st.rerun()
@@ -256,7 +263,9 @@ def show():
         st.subheader("📜 Histórico de Pesquisas")
 
         if "search_history" not in st.session_state:
-            st.session_state["search_history"] = []
+    
+            st.session_state["search_history"] = sources.search_history_user()
+        
 
         if st.session_state["search_history"]:
             # Inverte antes de iterar e mantém apenas a entrada mais recente para cada música
@@ -273,11 +282,12 @@ def show():
                 song = entry['song']
                 artist = entry['artist']
                 cover_url = entry.get("cover_url", "")
+                entry['genre'] = entry.get("genre")
                 timestamp = time_ago(entry['timestamp'])
                 display_title = song[:20] + "..." if len(song) > 20 else song
                 item_id = f"history_{song}_{idx}".replace(" ", "_")
 
-                html += html_images_display(item_id, display_title, artist, cover_url)
+                html += html_images_display(item_id, display_title, artist, cover_url, timestamp, show_time=True)
 
             # html += "</div></div>"
 
@@ -290,6 +300,15 @@ def show():
                     if clicked == item_id:
                         st.session_state["search_query"] = f"{entry['song']} - {entry['artist']}"
                         st.query_params["page"] = "busca"
+                        new_entry = {
+                            "song": entry["song"],
+                            "artist": entry["artist"],
+                            "cover_url": entry.get("cover_url", ""),
+                            "timestamp": time.time(),
+                            "genre": entry["genre"]
+                        }
+                        save_search_history(new_entry, st.session_state["user_id"])
+                        st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
                         st.rerun()
         else:
             st.write("Nenhuma música pesquisada ainda.")
@@ -315,6 +334,8 @@ def show():
                                 st.session_state["selected_genres"].remove(genre)
                                 if "genre_recommendations" in st.session_state and genre in st.session_state["genre_recommendations"]:
                                     del st.session_state["genre_recommendations"][genre]
+                                    sources.initial_save_mongodb("generos_escolhidos", st.session_state["selected_genres"])
+
                                 st.rerun()
                 st.markdown("---")
             
@@ -331,6 +352,8 @@ def show():
                     if genre not in st.session_state.get("selected_genres", []):
                         if st.button(f"+ {genre.capitalize()}", key=f"add_{genre}", use_container_width=True):
                             st.session_state["selected_genres"].append(genre)
+                            sources.initial_save_mongodb("generos_escolhidos", st.session_state["selected_genres"])
+
                             st.rerun()
             
             # Seção 3: Recomendações baseadas em Gêneros Selecionados
@@ -369,6 +392,7 @@ def show():
                             )
                             if st.button(f"{genre}", key=f"rec_{genre}", help=f"Relacionado a {reason.capitalize()}", use_container_width=True):
                                 st.session_state["selected_genres"].append(genre)
+                                sources.initial_save_mongodb("generos_escolhidos", st.session_state["selected_genres"])
                                 st.rerun()
                 else:
                     st.info("Adicione mais gêneros para receber recomendações personalizadas")
@@ -379,7 +403,6 @@ def show():
                 for i, genre in enumerate(popular_genres):
                     with cols[i % 2]:
                         if st.button(f"{genre.capitalize()}", key=f"starter_{genre}", use_container_width=True):
-                            st.session_state["selected_genres"].append(genre)
                             st.rerun()
         
         with col2:
@@ -424,7 +447,8 @@ def show():
                                         "timestamp": time.time(),
                                         "genre": genre
                                     }
-                                    save_search_history(new_entry)
+                                    save_search_history(new_entry, st.session_state["user_id"])
+                                    st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
                                     st.session_state["search_query"] = song_title + " - " + info["artist"]
                                     st.query_params["page"] = "busca"
                                     st.rerun()

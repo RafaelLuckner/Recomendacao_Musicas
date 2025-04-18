@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import sources
 
 def clean_session_state():
     valid_keys = ["selected_genres",
@@ -24,11 +25,17 @@ def clean_session_state():
 
 
 def show():
+    if 'user_id' not in st.session_state or st.session_state["user_id"] == None:
+        user_id = sources.search_user_id_mongodb(st.session_state["email"])
+        st.session_state["user_id"] = user_id
+    if "search_history" not in st.session_state or st.session_state["search_history"] == []:
+        st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+
+
     tab1, tab2 = st.tabs(["Dashboard", "Dados da sessão"])
 
     with tab1:
-        if 'search_history' not in st.session_state:
-            st.session_state['search_history'] = []
+
         df = pd.DataFrame(st.session_state['search_history'])
         if df.empty:
             st.write("Nenhuma pesquisa realizada.")
@@ -37,7 +44,7 @@ def show():
             if "genre" not in df.columns:
                 df["genre"] = None
             else:
-                df['genre'] = df["genre"].fillna('Desconhecido')
+                df['genre'] = df["genre"].fillna('Top 50')
 
             # Convertendo timestamp para data legível
             df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
@@ -54,20 +61,35 @@ def show():
 
             # Layout de duas colunas para os gráficos
             col_left, col_right = st.columns(2)
-
             with col_left:
-                # Gráfico de distribuição dos gêneros
+                # Treemap de músicas agrupadas por gênero
                 with st.container(border=True, height=600):
-                    st.subheader("Gêneros mais ouvidos")
-                    df_genres = df["genre"].dropna().sort_index(ascending=False)
-                    df_genres.columns = ["genre", "count"]
-        
-                    fig_genres = px.pie(df_genres, names="genre")
-                    st.plotly_chart(fig_genres, use_container_width=True)
-                
+                    st.subheader("Músicas mais ouvidas por gênero")
+
+                    # Contar quantas vezes cada música foi ouvida por gênero
+                    df_treemap = df[["genre", "song"]].dropna()
+                    df_treemap['genre'] = [genre.capitalize() for genre in df_treemap['genre']]
+                    df_treemap = df_treemap.value_counts().reset_index()
+                    df_treemap.columns = ["genre", "song", "count"]
+
+                    # Criar o treemap hierárquico
+                    fig = px.treemap(
+                        df_treemap,
+                        path=["genre", "song"],
+                        values="count",
+                    )
+
+                    # Deixar o hover limpo e profissional
+                    fig.update_traces(
+                        hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<extra></extra>'
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    
                 with st.container(border=True , height=600):
                     import pytz
-                    st.subheader("📈 Evolução das Reproduções")
+                    st.subheader("Evolução das Reproduções")
 
                     # Converter timestamp para datetime com fuso horário brasileiro
                     fuso_brasil = pytz.timezone("America/Sao_Paulo")
@@ -119,7 +141,7 @@ def show():
             with col_right:
                 # Gráfico de artistas mais ouvidos (horizontal)
                 with st.container(border=True, height=600):
-                    st.subheader("🎤 Top 5 Artistas Mais Ouvidos")
+                    st.subheader("Top 5 Artistas Mais Ouvidos")
                     df_artists = df["artist"].dropna().value_counts().reset_index()
                     df_artists.columns = ["artist", "count"]
                     df_artists = df_artists.sort_values("count", ascending=False).head(5)
@@ -162,7 +184,7 @@ def show():
                 
                 # Gráfico de músicas mais reproduzidas (horizontal)
                 with st.container(border=True, height=600):
-                    st.subheader("🎶 Top 5 Músicas Mais Reproduzidas")
+                    st.subheader("Top 5 Músicas Mais Reproduzidas")
                     df_songs = df["song"].value_counts().reset_index()
                     df_songs.columns = ["song", "count"]
                     df_songs = df_songs.sort_values("count", ascending=False).head(5)

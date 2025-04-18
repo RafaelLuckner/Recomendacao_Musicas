@@ -1,12 +1,21 @@
 import streamlit as st
 import pandas as pd
+import pymongo
+from pymongo import MongoClient
+import sources
+from bson import ObjectId
+from sources import initial_save_mongodb
 
 @st.cache_data
 def load_data():
     url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
     return pd.read_csv(url_data)
 
+
+
 def show():
+
+
     # Carregar dados
     # data = pd.read_csv('data/data_traduct.csv')
     data = load_data()
@@ -37,9 +46,11 @@ def show():
             if button:
                 st.session_state["selected_genres"] = []
                 st.rerun()
+
         # seguir para pagina inicial
         with col2:
             if st.button("Continuar", key="voltar", use_container_width=True):
+                initial_save_mongodb("generos_escolhidos", st.session_state["selected_genres"])
                 st.query_params["page"] = "select_songs"
                 st.rerun()
     else:

@@ -58,9 +58,10 @@ def show():
 
                         # Criar um documento vinculado na coleção info_usuarios
                         documento_info = {
-                            "usuario_id": resultado.inserted_id,  # Usa o ID do usuário recém-criado
-                            "historico": [],  # Os campos iniciam vazios
-                            "generos_escolhidos": [],   
+                            "user_id": resultado.inserted_id,  # Usa o ID do usuário recém-criado
+                            "historico": [],  
+                            "generos_escolhidos": [],
+                            "musicas_escolhidas": []
                         }
 
                         # Inserir o documento na coleção info_usuarios
@@ -69,6 +70,8 @@ def show():
                         st.success("✅ Conta criada com sucesso!")
                         st.query_params["page"] = "select_genres"
                         st.session_state["user_id"] = str(resultado.inserted_id)  # Armazena o ID na sessão
+                        st.session_state["email"] = email
+                        st.query_params["email"] = email
                         st.rerun()
 
         if back_to_login:
