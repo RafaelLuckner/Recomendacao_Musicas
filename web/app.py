@@ -37,7 +37,7 @@ def switch_page(target_page: str):
 
 # --- ---
 # Sidebar de navegação (só quando o usuário está logado)
-if st.session_state["page"] not in ["login", "register", "select_genres", "select_songs"]:
+if st.session_state["page"] not in ["login", "register", "select_genres", "select_songs", "esqueceu_senha"]:
     st.sidebar.image(
         "web/assets/logo_vazada_m4u_laranja.png",
         width=300,
@@ -65,7 +65,8 @@ page_module_map = {
     "recommendations": "pagess.recomendacoes",
     "busca": "pagess.busca",
     "dashboard": "pagess.dashboard",
-    "configuracoes": "pagess.configuracoes"
+    "configuracoes": "pagess.configuracoes",
+    "esqueceu_senha": "pagess.esqueceu_senha"
 }
 
 # --- ---

@@ -52,6 +52,9 @@ def show():
         if register_button:
             switch_page("register")
 
+        if esqueci_a_senha_button:
+            switch_page("esqueceu_senha")
+
     with col2:
         import base64
         image_path = "web/assets/logo_vazada_m4u_laranja.png"
