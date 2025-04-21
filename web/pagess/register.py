@@ -1,17 +1,20 @@
 import streamlit as st
 from pymongo import MongoClient
 from bson import ObjectId  # Importe ObjectId para trabalhar com IDs do MongoDB
+import sources
 
 # Conectar ao servidor MongoDB local
-client = MongoClient("mongodb+srv://leticia:ADMIN@m4u.5gwte.mongodb.net/?retryWrites=true&w=majority&appName=M4U")
+colecao_usuarios = sources.select_colection("usuarios")
+colecao_info_usuarios = sources.select_colection("info_usuarios")
 
-# Selecionar o banco de dados
-db = client["M4U"]
-
-# Selecionar as coleções
-colecao_usuarios = db["usuarios"]
-colecao_info_usuarios = db["info_usuarios"]
-
+def switch_page(page_name):
+    st.session_state["page"] = page_name
+    params = {"page": page_name}
+    if "email" in st.session_state:
+        params["email"] = st.session_state["email"]
+    st.query_params.clear()
+    st.query_params.update(params)
+    st.rerun()
 def show():
     col1, col2 = st.columns([1, 1])
     with col1:
@@ -68,22 +71,16 @@ def show():
                         colecao_info_usuarios.insert_one(documento_info)
 
                         st.success("✅ Conta criada com sucesso!")
-                        st.query_params["page"] = "select_genres"
                         st.session_state["user_id"] = str(resultado.inserted_id)  # Armazena o ID na sessão
+                        st.session_state["name"] = name
                         st.session_state["email"] = email
                         st.query_params["email"] = email
-                        st.rerun()
+                        switch_page("select_genres") 
+
 
         if back_to_login:
-            st.query_params["page"] = "login"
-            st.rerun()
+            switch_page("login")
         
-        # Botão de teste (opcional - pode remover)
-        test = st.button("test")
-        if test:
-            st.session_state['name'] = 'teste'
-            st.query_params["page"] = "select_genres"
-            st.rerun()
 
     with col2:
         import base64

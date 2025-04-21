@@ -20,8 +20,10 @@ client_secret = os.getenv("SPOTIPY_CLIENT_SECRET")
 # -------------------------------
 SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 
-def save_search_history(new_entry, user_id):
+def save_search_history_mongodb(new_entry, user_id):
     sources.save_search_history(new_entry, user_id)
+
+
 
 def search_youtube(query, max_videos=1):
     ydl_opts = {
@@ -82,8 +84,16 @@ DEEZER_PLAYLIST_IDS = {
 def link_musica_deezer(musica_completa, limiar_similaridade=0.5):
     # Separar nome da música e artista
     partes = musica_completa.split(" - ")
-    nome_musica = partes[0].strip()
-    nome_artista = partes[1].strip() if len(partes) > 1 else ""
+
+    if len(partes) > 2:
+        nome_musica = partes[0].strip() + " - " + partes[1].strip()
+        nome_artista = partes[-1].strip()
+    elif len(partes) == 1:
+        nome_musica = partes[0].strip()
+        nome_artista = ""
+    elif len(partes) == 2:
+        nome_musica = partes[0].strip()
+        nome_artista = partes[1].strip()
 
     # Fazer a requisição à API do Deezer
     query = f"{nome_musica} {nome_artista}".strip().replace(" ", "+")
@@ -99,7 +109,10 @@ def link_musica_deezer(musica_completa, limiar_similaridade=0.5):
 
     resultado = dados['data'][0]
     titulo_retornado = resultado['title']
-    artista_retornado = resultado['artist']['name']
+    if nome_artista == "":
+        artista_retornado = ""
+    else:
+        artista_retornado = resultado['artist']['name']
 
     # Medir similaridade com o nome da música e artista
     sim_nome = difflib.SequenceMatcher(None, nome_musica.lower(), titulo_retornado.lower()).ratio()
@@ -113,8 +126,18 @@ def link_musica_deezer(musica_completa, limiar_similaridade=0.5):
 def link_musica_spotify(musica_completa, client_id, client_secret, limiar_similaridade=0.5):
     # Separa o nome da música e artista
     partes = musica_completa.split(" - ")
-    nome_musica = partes[0].strip()
-    nome_artista = partes[1].strip() if len(partes) > 1 else ""
+    # Se houver mais de duas partes, considera a primeira parte como o nome da música
+    # e a ultima parte como o artista
+    # Ex: "Photograph  - ao vivo- Ed Sheeran"
+    if len(partes) > 2:
+        nome_musica = partes[0].strip() + " - " + partes[1].strip()
+        nome_artista = partes[-1].strip()
+    elif len(partes) == 1:
+        nome_musica = partes[0].strip()
+        nome_artista = ""
+    elif len(partes) == 2:
+        nome_musica = partes[0].strip()
+        nome_artista = partes[1].strip()
 
     # Autenticação
     auth = f'{client_id}:{client_secret}'
@@ -148,7 +171,11 @@ def link_musica_spotify(musica_completa, client_id, client_secret, limiar_simila
 
     resultado = dados['tracks']['items'][0]
     nome_retornado = resultado['name']
-    artistas_retornados = ", ".join([a['name'] for a in resultado['artists']])
+
+    if nome_artista == "":
+        artistas_retornados = ""
+    else:
+        artistas_retornados = ", ".join([a['name'] for a in resultado['artists']])
 
     # Verificar similaridade
     sim_nome = difflib.SequenceMatcher(None, nome_musica.lower(), nome_retornado.lower()).ratio()
@@ -183,7 +210,11 @@ def show():
     if 'user_id' not in st.session_state:
         user_id = sources.search_user_id_mongodb(st.session_state["email"])
         st.session_state["user_id"] = user_id
-    
+    if 'new_entry' not in st.session_state:
+        st.session_state['new_entry'] = None
+    if 'old_entry' not in st.session_state:
+        st.session_state['old_entry'] = None
+
     # Layout: duas colunas (esquerda: YouTube; direita: Top 50 em dois tabs)
     col_left, col_right = st.columns([2, 1])
     
@@ -198,7 +229,6 @@ def show():
 
         if search_query != st.session_state.get('search_query', ''):
             st.session_state['search_query'] = search_query
-            st.rerun()
         
         if search_query:
             st.write(f"Você está buscando por: **{search_query}**")
@@ -357,7 +387,7 @@ def show():
                                 "cover_url": track["album_cover"],
                                 "timestamp": time.time(),
                             }
-                            save_search_history(new_entry, st.session_state["user_id"])
+                            st.session_state['new_entry'] = new_entry
                             st.session_state["search_query"] = f"{track['title']} - {track['artist']}"
                             st.rerun()
 
@@ -369,8 +399,18 @@ def show():
             
         with tab_global:
             display_tracks("Top50Global", DEEZER_PLAYLIST_IDS["Top 50 Global"])
+    
+    if st.session_state['old_entry'] == None:
+        st.session_state['old_entry'] = {'timestamp': 5 - time.time()}
 
+    if  time.time() - st.session_state['old_entry'].get('timestamp')  > 4:
+        if (st.session_state['new_entry'] != None):
+            save_search_history_mongodb(st.session_state['new_entry'], st.session_state["user_id"])
+            st.session_state['old_entry'] = st.session_state['new_entry']
+            st.session_state['new_entry'] = None
 
+            st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
 
+        
 if __name__ == "__main__":
     show()

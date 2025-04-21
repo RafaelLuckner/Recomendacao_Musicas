@@ -18,7 +18,8 @@ def clean_session_state():
                   "tab",
                   "Top50Brasil_tracks",
                   "Top50Global_tracks",
-                  "avaliacao"]
+                  "avaliacao",
+                  'user_id']
     for key in list(st.session_state.keys()):
         if key not in valid_keys:
             del st.session_state[key]
@@ -35,7 +36,7 @@ def show():
     tab1, tab2 = st.tabs(["Dashboard", "Dados da sessão"])
 
     with tab1:
-
+        st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
         df = pd.DataFrame(st.session_state['search_history'])
         if df.empty:
             st.write("Nenhuma pesquisa realizada.")
@@ -221,10 +222,6 @@ def show():
 
     with tab2:
 
-        clean_session_state()
 
         st.write("Dados de sessão:", st.session_state)
 
-        st.write("Músicas disponíveis:")
-        data = pd.read_csv('data/data_traduct.csv')
-        st.write(pd.DataFrame(data[['track_name', 'track_genre', 'artists']]))

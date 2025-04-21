@@ -70,8 +70,8 @@ def initial_save_mongodb(campo, info):
 
     collection_info.update_one(
         {"user_id": ObjectId(user_id)},
-        {"$set": {campo: info}}
-)
+        {"$set": {campo: info}})
+
 
 def save_search_history(new_entry, user_id):
     collection = select_colection("info_usuarios")

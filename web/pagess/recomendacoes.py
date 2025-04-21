@@ -2,6 +2,7 @@ import os
 import time
 import dotenv
 import spotipy
+import unicodedata
 import pandas as pd
 import streamlit as st
 from datetime import datetime, date
@@ -13,11 +14,16 @@ import sources
 
 @st.cache_data
 def load_data():
-    url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
+    url_data = "https://drive.google.com/uc?export=download&id=1WMyvBStaZPR9y7tn6ZB3ZvH6W4pbX0Mp"
     return pd.read_csv(url_data)
 
-def save_search_history(new_entry, user_id):
-    sources.save_search_history(new_entry, user_id)
+def switch_page(target_page: str):
+    st.session_state["page"] = target_page
+    params = {"page": target_page}
+    if "email" in st.session_state:
+        params["email"] = st.session_state["email"]
+    st.query_params.update(params)
+    st.rerun()
 
 def clean_session_state():
     valid_keys = ["selected_genres",
@@ -44,40 +50,54 @@ def authenticate_spotify():
     sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
     return sp
 
-def get_album_cover_and_artist(song_name, sp):
-    results = sp.search(q=song_name, limit=1, type='track')
+def get_album_cover_and_artist(song_name, artist_name, sp):
+    query = f'track:{song_name} artist:{artist_name}'
+    results = sp.search(q=query, limit=1, type='track')
     if results['tracks']['items']:
         track = results['tracks']['items'][0]
         album_cover_url = track['album']['images'][0]['url']
-        artist_name = track['artists'][0]['name']
+        artist_name = track['artists'][0]['name']  # nome padronizado do Spotify
         return album_cover_url, artist_name
     return None, None
 
-def generate_recommendations(selected_genres, data, sp, limit=20):
+
+def generate_recommendations(selected_genres, data, sp, limit=10):
     """
-    Para cada gênero selecionado, seleciona aleatoriamente 6 músicas e 
+    Para cada gênero selecionado, seleciona aleatoriamente músicas e 
     retorna um dicionário em que a chave é o nome da música e o valor é 
-    um dicionário com: song, genre, artist e cover_url.
+    um dicionário com: song, genre, artist e cover_url. 
+    Se a música já tem a cover_url, a requisição não será feita.
     """
-    # Limita o número de músicas por gênero
-    limit = int(limit/len(selected_genres))
+    limit = int(limit / len(selected_genres))
     recommendations = {}
     for genre in selected_genres:
         genre_songs = data[data['track_genre'] == genre]
         if not genre_songs.empty:
-            sampled = genre_songs['track_name'].sample(limit).tolist()
-            for song in sampled:
-                # Evita sobrescrever caso já exista (de outro gênero, por exemplo)
+            sampled_rows = genre_songs.sample(limit)
+            
+            for _, row in sampled_rows.iterrows():
+                song = row['track_name']
+                artist = row['artists']
+                
+                # Verifica se a música já tem a cover_url
                 if song not in recommendations:
-                    cover_url, artist = get_album_cover_and_artist(song, sp)
-                    # Só adiciona se conseguir obter os dados
-                    if cover_url and artist:
+                    cover_url = row.get('cover_url', None)  # Verifica se já existe cover_url na linha
+                    
+                    # Verifica se o cover_url está ausente (NaN ou None)
+                    if pd.isna(cover_url):  
+                        cover_url, resolved_artist = get_album_cover_and_artist(song, artist, sp)
+                    else:
+                        resolved_artist = artist  # Já tem o artista da música
+                    
+                    # Se obteve a cover_url e o artista, adiciona ao dicionário
+                    if cover_url and resolved_artist:
                         recommendations[song] = {
                             "song": song,
                             "genre": genre,
-                            "artist": artist,
+                            "artist": resolved_artist,
                             "cover_url": cover_url
                         }
+    
     return recommendations
 
 def time_ago(timestamp):
@@ -93,7 +113,6 @@ def time_ago(timestamp):
     else:
         return f"{int(diff/86400)} dias atrás"
     
-
 # HTML
 def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=False):
     return f"""
@@ -180,7 +199,6 @@ def show():
     # Criar abas para navegação
     tab1, tab2, tab3 = st.tabs(["Para você ", " Histórico", " Gêneros"])
 
-    # data = pd.read_csv('data/data_traduct.csv')
     data = load_data()
     genres = data['track_genre'].unique()
 
@@ -191,8 +209,9 @@ def show():
         st.session_state["selected_genres"] = sources.load_info_user(st.session_state["user_id"], "generos_escolhidos")
     if "search_query" not in st.session_state:
         st.session_state["search_query"] = ""
-    if "search_history" not in st.session_state or st.session_state["search_history"] == []:
+    if "search_history" not in st.session_state:
         st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+
     # Inicializa nosso dicionário de recomendações
     if "recommended_songs" not in st.session_state:
         st.session_state["recommended_songs"] = {}
@@ -245,10 +264,9 @@ def show():
                             "timestamp": time.time(),
                             "genre": rec["genre"]
                         }
-                        save_search_history(new_entry, st.session_state["user_id"])
-                        st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+                        st.session_state['new_entry'] = new_entry
                         st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
-                        st.query_params["page"] = "busca"
+                        switch_page("busca")
                         st.rerun()
             
             if st.button("Novas recomendações"):
@@ -299,7 +317,7 @@ def show():
                     item_id = f"history_{song}_{idx}".replace(" ", "_")
                     if clicked == item_id:
                         st.session_state["search_query"] = f"{entry['song']} - {entry['artist']}"
-                        st.query_params["page"] = "busca"
+                        switch_page("busca")
                         new_entry = {
                             "song": entry["song"],
                             "artist": entry["artist"],
@@ -307,13 +325,15 @@ def show():
                             "timestamp": time.time(),
                             "genre": entry["genre"]
                         }
-                        save_search_history(new_entry, st.session_state["user_id"])
-                        st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+                        st.session_state['new_entry'] = new_entry
                         st.rerun()
+            if st.button("Atualizar histórico"):
+                st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+                st.rerun()
         else:
             st.write("Nenhuma música pesquisada ainda.")
         
-
+        
     # Tab 3 - Gêneros
     with tab3:
         col1, col2 = st.columns([1,2])
@@ -343,8 +363,19 @@ def show():
             st.markdown("### Explorar Gêneros")
             genre_search = st.text_input("Buscar gêneros", placeholder="Digite um gênero...", key="genre_search").lower()
             
-            # Normaliza os gêneros antes de aplicar o filtro
-            filtered_genres = [g for g in genres if genre_search in g.lower()] if genre_search else genres
+
+            def remove_acentos(texto):
+                return ''.join(
+                    c for c in unicodedata.normalize('NFKD', texto)
+                    if not unicodedata.combining(c)
+                )
+
+            # Filtrar e ordenar gêneros com base na primeira palavra sem acento
+            filtered_genres = sorted(
+                [g for g in genres if genre_search in remove_acentos(g.lower())] if genre_search else genres,
+                key=lambda x: remove_acentos(x.split()[0].lower()))
+            # Criar layout em 3 colunas x 3 linhas
+            rows = [filtered_genres[i:i+3] for i in range(0, len(filtered_genres), 3)]
 
 
             with st.container(border=True, height=400):
@@ -447,14 +478,13 @@ def show():
                                         "timestamp": time.time(),
                                         "genre": genre
                                     }
-                                    save_search_history(new_entry, st.session_state["user_id"])
-                                    st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+                                    
+                                    st.session_state['new_entry'] = new_entry
                                     st.session_state["search_query"] = song_title + " - " + info["artist"]
-                                    st.query_params["page"] = "busca"
-                                    st.rerun()
+                                    switch_page("busca")
 
                         if st.button("🔁 Novas recomendações", key=f"refresh_{genre}"):
-                            st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit=8)
+                            st.session_state["genre_recommendations"][genre] = generate_recommendations([genre], data, sp, limit=20)
                             st.rerun()
             else:
                 st.info("Selecione gêneros à esquerda para ver recomendações")

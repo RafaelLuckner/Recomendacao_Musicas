@@ -1,11 +1,21 @@
 import streamlit as st
 
+
+def switch_page(page_name):
+    st.session_state["page"] = page_name
+    params = {"page": page_name}
+    if "email" in st.session_state:
+        params["email"] = st.session_state["email"]
+    st.query_params.update(params)
+    st.rerun()
+
 def show():
     # Título da página inicial
     st.title("🎶 Bem-vindo ao Recomendador de Músicas!")
 
     if 'name' not in st.session_state:
         st.session_state["name"] = "Usuário" 
+
     # Texto de boas-vindas
     st.write(f"""
     Bem vindo(a) {st.session_state["name"].capitalize()}!
@@ -25,13 +35,12 @@ def show():
         col3, col4 = st.columns([1, 1])
         with col3:
             if st.button("🎧 Encontre Músicas para Você"):
-                st.query_params["page"] = "recommendations"
-                st.rerun()
+                switch_page("recommendations")
 
         with col4:
             if st.button("🔎 Pesquisar Músicas"):
-                st.query_params["page"] = "busca"
-                st.rerun()
+                switch_page("busca")
+
 
     with col2:
         pass
@@ -41,8 +50,8 @@ def show():
     - **Receber recomendações personalizadas** de músicas com base nos gêneros que você gosta.
     - **Pesquisar suas músicas favoritas** diretamente do YouTube.
     - **Ouvir e descobrir novas músicas** enquanto navega por seu gosto musical.
-    - **Acompanhar o seu historico** e ver quais músicas vocé costuma ouvir.
-    - **Acompanhar suas preferências** e ver quais músicas e artistas vocé costuma ouvir.
+    - **Acompanhar o seu histórico** e ver quais músicas você costuma ouvir.
+    - **Acompanhar suas preferências** e ver quais músicas e artistas você costuma ouvir.
              
      **Divirta-se explorando músicas e seus gêneros favoritos!**
     """)

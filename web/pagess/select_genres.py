@@ -8,10 +8,17 @@ from sources import initial_save_mongodb
 
 @st.cache_data
 def load_data():
-    url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
+    url_data ="https://drive.google.com/uc?export=download&id=11Fc7Yuo8uCuLxjP5J7rtEMwKr6Rvi8dw"
     return pd.read_csv(url_data)
 
-
+def switch_page(page_name):
+    st.session_state["page"] = page_name
+    params = {"page": page_name}
+    if "email" in st.session_state:
+        params["email"] = st.session_state["email"]
+    st.query_params.clear()
+    st.query_params.update(params)
+    st.rerun()
 
 def show():
 
@@ -51,7 +58,7 @@ def show():
         with col2:
             if st.button("Continuar", key="voltar", use_container_width=True):
                 initial_save_mongodb("generos_escolhidos", st.session_state["selected_genres"])
-                st.query_params["page"] = "select_songs"
+                st.query_params["page"] = "home"
                 st.rerun()
     else:
         st.write("### Gêneros selecionados:")
@@ -63,8 +70,18 @@ def show():
     search_query = st.text_input("🔍 Filtrar gêneros", placeholder="Digite um gênero...").lower()
 
     # Filtrar gêneros com base na pesquisa
-    filtered_genres = [g for g in genres if search_query in g.lower()] if search_query else genres
+    import unicodedata
 
+    def remove_acentos(texto):
+        return ''.join(
+            c for c in unicodedata.normalize('NFKD', texto)
+            if not unicodedata.combining(c)
+        )
+
+    # Filtrar e ordenar gêneros com base na primeira palavra sem acento
+    filtered_genres = sorted(
+        [g for g in genres if search_query in remove_acentos(g.lower())] if search_query else genres,
+        key=lambda x: remove_acentos(x.split()[0].lower()))
     # Criar layout em 3 colunas x 3 linhas
     rows = [filtered_genres[i:i+3] for i in range(0, len(filtered_genres), 3)]
 

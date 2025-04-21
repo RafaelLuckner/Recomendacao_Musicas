@@ -10,6 +10,14 @@ def load_data():
 
     return pd.read_csv(url_data)[['track_name', 'track_genre']].drop_duplicates()
 
+def switch_page(page_name):
+    st.session_state["page"] = page_name
+    st.query_params.clear()
+    st.query_params.update({
+        "page": page_name,
+        "email": st.session_state.get("email", "")
+    })
+    st.rerun()
 
 def show():
     # Carregar dados
@@ -71,5 +79,4 @@ def show():
     with col2:
         if st.button("Continuar", use_container_width=True):
             initial_save_mongodb("musicas_escolhidas", st.session_state["selected_songs"])
-            st.query_params["page"] = "home"
-            st.rerun()
+            switch_page("home")

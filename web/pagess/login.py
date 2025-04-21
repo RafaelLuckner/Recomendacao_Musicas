@@ -4,16 +4,17 @@ from sources import search_user_id_mongodb
 from sources import search_history_user
 from sources import select_colection
 
-# Conectar ao servidor MongoDB local
-client = MongoClient("mongodb+srv://leticia:ADMIN@m4u.5gwte.mongodb.net/?retryWrites=true&w=majority&appName=M4U")
+def switch_page(page_name):
+    st.session_state["page"] = page_name
+    params = {"page": page_name}
+    if "email" in st.session_state:
+        params["email"] = st.session_state["email"]
+    st.query_params.clear()
+    st.query_params.update(params)
+    st.rerun()
 
-# Selecionar o banco de dados
-db = client["M4U"]
-
-# Selecionar a coleção (tabela)
-colecao_users = db["usuarios"]
-
-colecao_info_users = db["info_usuarios"]
+colecao_users = select_colection("usuarios")
+colecao_info_users = select_colection("info_usuarios")
 
     
 def show():
@@ -46,12 +47,11 @@ def show():
                 st.session_state["password"] = documento["senha"]
                 st.session_state["name"] = documento["nome"]
                 st.query_params["email"] = documento["email"]
-                st.query_params["page"] = "home"
-                st.rerun()
+                switch_page("home")
 
         if register_button:
-            st.query_params["page"] = "register"
-            st.rerun()
+            switch_page("register")
+
     with col2:
         import base64
         image_path = "web/assets/logo_vazada_m4u_laranja.png"
