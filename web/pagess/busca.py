@@ -229,6 +229,7 @@ def show():
 
         if search_query != st.session_state.get('search_query', ''):
             st.session_state['search_query'] = search_query
+            st.rerun()
         
         if search_query:
             st.write(f"Você está buscando por: **{search_query}**")

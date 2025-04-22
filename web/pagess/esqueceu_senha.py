@@ -24,7 +24,8 @@ def show():
                 st.error("Formato de e-mail inválido.")
             else:
                 # Aqui você pode chamar sua função de envio de e-mail
-                st.success(f"Instruções de redefinição de senha foram enviadas para {email}.")
+                st.error("O sistema de redefinição de senha ainda está em desenvolvimento.")
+                # st.success(f"Instruções de redefinição de senha foram enviadas para {email}.")
 
     # Botão voltar
     if st.button("Voltar"):

@@ -15,6 +15,7 @@ def switch_page(page_name):
     st.query_params.clear()
     st.query_params.update(params)
     st.rerun()
+    
 def show():
     col1, col2 = st.columns([1, 1])
     with col1:
