@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import sources
+import pytz
 
 def clean_session_state():
     valid_keys = ["selected_genres",
@@ -24,7 +25,6 @@ def clean_session_state():
         if key not in valid_keys:
             del st.session_state[key]
 
-
 def show():
     if 'user_id' not in st.session_state or st.session_state["user_id"] == None:
         user_id = sources.search_user_id_mongodb(st.session_state["email"])
@@ -32,12 +32,26 @@ def show():
     if "search_history" not in st.session_state or st.session_state["search_history"] == []:
         st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
 
-
     tab1, tab2 = st.tabs(["Dashboard", "Dados da sessão"])
 
     with tab1:
         st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
-        df = pd.DataFrame(st.session_state['search_history'])
+        # Calcular métricas para todas as músicas ouvidas
+        full_history_df = pd.DataFrame(st.session_state['search_history'])
+        if not full_history_df.empty:
+            if "genre" not in full_history_df.columns:
+                full_history_df["genre"] = None
+            else:
+                full_history_df['genre'] = full_history_df["genre"].fillna('Top 50')
+            total_songs = len(full_history_df)
+            unique_genres = full_history_df["genre"].nunique()
+        else:
+            total_songs = 0
+            unique_genres = 0
+
+        # Limitar às últimas 100 músicas reproduzidas, ordenando por timestamp
+        recent_history = sorted(st.session_state['search_history'], key=lambda x: x['timestamp'], reverse=True)[:100]
+        df = pd.DataFrame(recent_history)
         if df.empty:
             st.write("Nenhuma pesquisa realizada.")
             return
@@ -51,14 +65,14 @@ def show():
             df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s")
 
             # Título do dashboard
-            st.title("🎵 Dashboard de Músicas Reproduzidas")
+            st.title("🎵 Dashboard Músicas Reproduzidas")
 
             # Container para estatísticas gerais
             with st.container():
                 st.subheader("📊 Estatísticas Gerais")
                 col1, col2 = st.columns(2)
-                col1.metric("Total de Músicas", len(df))
-                col2.metric("Gêneros Únicos", df["genre"].nunique())
+                col1.metric("Total de Músicas", total_songs)
+                col2.metric("Gêneros Únicos", unique_genres)
 
             # Layout de duas colunas para os gráficos
             col_left, col_right = st.columns(2)
@@ -87,9 +101,7 @@ def show():
 
                     st.plotly_chart(fig, use_container_width=True)
 
-                    
-                with st.container(border=True , height=600):
-                    import pytz
+                with st.container(border=True, height=600):
                     st.subheader("Evolução das Reproduções")
 
                     # Converter timestamp para datetime com fuso horário brasileiro
@@ -98,7 +110,7 @@ def show():
 
                     # Opção de agrupamento
                     periodo = st.radio("Agrupar por:", ["Dia", "Hora"], horizontal=True)
-                    freq = 'D' if periodo == "Dia" else 'H'
+                    freq = 'D' if periodo == "Dia" else 'h'
                     date_format = '%d/%m' if freq == 'D' else '%d/%m %Hh'
 
                     # Geração do período completo
@@ -110,10 +122,10 @@ def show():
                     )
 
                     df_time = (df.set_index('datetime')
-                                .resample(freq)
-                                .size()
-                                .reindex(time_range, fill_value=0)
-                                .reset_index(name='Reproduções'))
+                              .resample(freq)
+                              .size()
+                              .reindex(time_range, fill_value=0)
+                              .reset_index(name='Reproduções'))
 
                     df_time.rename(columns={'index': 'Periodo'}, inplace=True)
                     df_time['Periodo'] = df_time['Periodo'].dt.strftime(date_format)
@@ -153,11 +165,11 @@ def show():
                     BAR_COLOR = "#1a5276"  # Azul escuro
                     
                     fig_artists = px.bar(df_artists, 
-                                    y="artist_short", 
-                                    x="count", 
-                                    orientation='h',
-                                    color_discrete_sequence=[BAR_COLOR],  # Cor uniforme
-                                    text="count")
+                                       y="artist_short", 
+                                       x="count", 
+                                       orientation='h',
+                                       color_discrete_sequence=[BAR_COLOR],  # Cor uniforme
+                                       text="count")
                     
                     fig_artists.update_layout(
                         yaxis={
@@ -178,7 +190,7 @@ def show():
                         hovertemplate="<b>%{y}</b><br>Reproduções: %{x}<extra></extra>",
                         marker=dict(line=dict(width=0)),
                         textfont_size=25,
-                            # Remove bordas das barras
+                        # Remove bordas das barras
                     )
                     
                     st.plotly_chart(fig_artists, use_container_width=True)
@@ -189,18 +201,17 @@ def show():
                     df_songs = df["song"].value_counts().reset_index()
                     df_songs.columns = ["song", "count"]
                     df_songs = df_songs.sort_values("count", ascending=False).head(5)
-
                     
                     # Cortar títulos longos
                     df_songs["song_short"] = df_songs["song"].apply(lambda x: (x[:27] + "...") if len(x) > 30 else x)
                     
                     # Criar gráfico com cor sólida
                     fig_songs = px.bar(df_songs,
-                                    y="song_short",
-                                    x="count",
-                                    text="count",
-                                    color_discrete_sequence=[BAR_COLOR],
-                                    orientation='h')  # Azul petróleo escuro
+                                     y="song_short",
+                                     x="count",
+                                     text="count",
+                                     color_discrete_sequence=[BAR_COLOR],
+                                     orientation='h')  # Azul petróleo escuro
                     
                     # Ajustes finais
                     fig_songs.update_layout(
@@ -219,9 +230,5 @@ def show():
                     st.plotly_chart(fig_songs, use_container_width=True)
             st.write(df)
 
-
     with tab2:
-
-
         st.write("Dados de sessão:", st.session_state)
-

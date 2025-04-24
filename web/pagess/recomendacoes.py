@@ -209,7 +209,7 @@ def show():
         st.session_state["selected_genres"] = sources.load_info_user(st.session_state["user_id"], "generos_escolhidos")
     if "search_query" not in st.session_state:
         st.session_state["search_query"] = ""
-    if "search_history" not in st.session_state:
+    if "search_history" not in st.session_state or st.session_state["search_history"] == []:
         st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
 
     # Inicializa nosso dicionário de recomendações
@@ -281,22 +281,27 @@ def show():
         st.subheader("📜 Histórico de Pesquisas")
 
         if "search_history" not in st.session_state:
-    
-            st.session_state["search_history"] = sources.search_history_user()
-        
+            st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
 
         if st.session_state["search_history"]:
-            # Inverte antes de iterar e mantém apenas a entrada mais recente para cada música
+            # Ordenar por timestamp em ordem decrescente e manter entradas únicas
             unique_songs = {}
-            for entry in reversed(st.session_state["search_history"]):
+            for entry in sorted(st.session_state["search_history"], key=lambda x: x["timestamp"], reverse=True):
                 if entry['song'] not in unique_songs:
                     unique_songs[entry['song']] = entry
 
             unique_history = list(unique_songs.values())
 
+            # Inicializar o limite de exibição
+            if "history_display_limit" not in st.session_state:
+                st.session_state["history_display_limit"] = 20
+
+            # Limitar exibição ao número atual de músicas
+            displayed_history = unique_history[:st.session_state["history_display_limit"]]
+
             html = html_scroll_container(scroll_amount=600)
 
-            for idx, entry in enumerate(unique_history):
+            for idx, entry in enumerate(displayed_history):
                 song = entry['song']
                 artist = entry['artist']
                 cover_url = entry.get("cover_url", "")
@@ -307,12 +312,10 @@ def show():
 
                 html += html_images_display(item_id, display_title, artist, cover_url, timestamp, show_time=True)
 
-            # html += "</div></div>"
-
             clicked = click_detector(html, key="history_scroll_click")
 
             if clicked:
-                for idx, entry in enumerate(unique_history):
+                for idx, entry in enumerate(displayed_history):
                     song = entry['song']
                     item_id = f"history_{song}_{idx}".replace(" ", "_")
                     if clicked == item_id:
@@ -327,12 +330,24 @@ def show():
                         }
                         st.session_state['new_entry'] = new_entry
                         st.rerun()
-            if st.button("Atualizar histórico"):
-                st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
-                st.rerun()
+
+            # Botão para carregar mais 50 músicas, se houver mais para exibir
+            remaining_songs = len(unique_history) - st.session_state["history_display_limit"]
+            if remaining_songs > 0:
+                if st.button(f"Carregar mais ({min(remaining_songs, 1000)} restantes)"):
+                    st.session_state["history_display_limit"] += 20
+                    st.rerun()
+
         else:
             st.write("Nenhuma música pesquisada ainda.")
         
+        if st.button("Atualizar histórico"):
+            st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+            st.rerun()
+
+
+
+
         
     # Tab 3 - Gêneros
     with tab3:

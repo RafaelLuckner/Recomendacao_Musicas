@@ -47,16 +47,13 @@ def search_user_id_mongodb(email):
 
 def search_history_user(user_id):
     collection = select_colection("info_usuarios")
-    # Converter o id_user para ObjectId
     try:
         user_id = ObjectId(user_id)
     except Exception as e:
         print(f"Erro ao converter id_user para ObjectId: {e}")
         return []
     user = collection.find_one({"user_id": user_id})
-    if user is not None:
-        return user.get("historico")
-    return 
+    return user.get("historico", []) if user else []
 
 
 
@@ -76,14 +73,22 @@ def initial_save_mongodb(campo, info):
 def save_search_history(new_entry, user_id):
     collection = select_colection("info_usuarios")
     try:
-        new_entry["timestamp"] = int(time.time())
+        # Validar user_id
+        if not user_id:
+            raise ValueError("user_id não fornecido")
+        user_id = ObjectId(user_id)  # Converter para ObjectId
+        # Validar new_entry
+        if not isinstance(new_entry, dict) or not all(key in new_entry for key in ["song", "artist", "timestamp"]):
+            raise ValueError("new_entry inválido ou incompleto")
+        new_entry["timestamp"] = int(time.time())  # Garantir timestamp atualizado
         collection.update_one(
-            {"user_id": user_id},  # Ajuste conforme necessário
+            {"user_id": user_id},
             {"$push": {"historico": new_entry}},
             upsert=True
         )
     except Exception as e:
         st.error(f"Erro ao salvar histórico: {e}")
+        raise  # Re-raise para depuração
         
 def delete_user_by_email(email):
     try:

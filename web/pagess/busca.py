@@ -9,6 +9,7 @@ import yt_dlp
 import difflib
 from st_click_detector import click_detector
 from pymongo import MongoClient
+from concurrent.futures import ThreadPoolExecutor
 
 import sources
 
@@ -23,28 +24,45 @@ SEARCH_URL = "https://www.googleapis.com/youtube/v3/search"
 def save_search_history_mongodb(new_entry, user_id):
     sources.save_search_history(new_entry, user_id)
 
+def switch_page(target_page: str):
+    st.session_state["page"] = target_page
+    params = {"page": target_page}
+    if "email" in st.session_state:
+        params["email"] = st.session_state["email"]
+    st.query_params.update(params)
+    st.rerun()
 
-
-def search_youtube(query, max_videos=1):
+def search_youtube(query, max_videos=3):
+    """Busca vídeos no YouTube usando yt-dlp com otimizações para velocidade."""
+    cache_key = f"youtube_cache_{query}"
+    cache_timeout = 3600  # 1 hora
+    if cache_key in st.session_state:
+        cached = st.session_state[cache_key]
+        if time.time() - cached['timestamp'] < cache_timeout:
+            return cached['results']
+    
     ydl_opts = {
         'quiet': True,
         'extract_flat': True,
         'force_generic_extractor': True,
+        'noplaylist': True,
+        'max_downloads': max_videos,
     }
+    
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            resultados = ydl.extract_info(f"ytsearch{max_videos}:{query}", download=False)
-            return resultados['entries']
+            resultados = ydl.extract_info(f"ytsearch{max_videos}:{query} official music video", download=False)
+            entries = resultados.get('entries', [])
+            
+            if entries:
+                st.session_state[cache_key] = {'results': entries[:max_videos], 'timestamp': time.time()}
+                return entries[:max_videos]
+            
+            return []
+    
     except Exception as e:
-        print(f"Erro ao buscar vídeo: {e}")
+        st.error(f"Erro ao buscar vídeo: {e}")
         return []
-
-def is_quota_error(response):
-    if 'error' in response:
-        error_message = response['error'].get('message', '')
-        if 'quota' in error_message.lower():
-            return True
-    return False
 
 # -------------------------------
 # FUNÇÕES PARA A API DO DEEZER
@@ -212,8 +230,6 @@ def show():
         st.session_state["user_id"] = user_id
     if 'new_entry' not in st.session_state:
         st.session_state['new_entry'] = None
-    if 'old_entry' not in st.session_state:
-        st.session_state['old_entry'] = None
 
     # Layout: duas colunas (esquerda: YouTube; direita: Top 50 em dois tabs)
     col_left, col_right = st.columns([2, 1])
@@ -236,7 +252,7 @@ def show():
             videos = search_youtube('musica ' + search_query)
             
             if not videos:
-                st.warning("Nenhum vídeo encontrado ou erro na busca. Tente novamente mais tarde.")
+                st.warning("Nenhum vídeo encontrado ou erro na busca.")
             else:
                 video_id = videos[0].get('id')
                 st.video(f"https://www.youtube.com/watch?v={video_id}",loop=True)
@@ -325,7 +341,7 @@ def show():
                 st.error("Não foi possível carregar a playlist.")
                 return
 
-            with st.container(height=500):
+            with st.container(height=700):
                 html = """
                         <div style='
                             display: flex;
@@ -393,7 +409,6 @@ def show():
                             st.rerun()
 
 
-                                    
         
         with tab_brasil:
             display_tracks("Top50Brasil", DEEZER_PLAYLIST_IDS["Top 50 Brasil"])
@@ -401,16 +416,26 @@ def show():
         with tab_global:
             display_tracks("Top50Global", DEEZER_PLAYLIST_IDS["Top 50 Global"])
     
-    if st.session_state['old_entry'] == None:
-        st.session_state['old_entry'] = {'timestamp': 5 - time.time()}
+    if 'old_entry' not in st.session_state or st.session_state['old_entry'] is None:
+        st.session_state['old_entry'] = {'timestamp': time.time() - 10}
 
-    if  time.time() - st.session_state['old_entry'].get('timestamp')  > 4:
-        if (st.session_state['new_entry'] != None):
-            save_search_history_mongodb(st.session_state['new_entry'], st.session_state["user_id"])
-            st.session_state['old_entry'] = st.session_state['new_entry']
-            st.session_state['new_entry'] = None
-
-            st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+    if time.time() - st.session_state['old_entry'].get('timestamp', 0) > 4:
+        if st.session_state.get('new_entry') is not None:
+            if st.session_state.get('user_id') is None:
+                user_id = sources.search_user_id_mongodb(st.session_state.get("email"))
+                if user_id is None:
+                    st.error("Erro: Usuário não autenticado. Redirecionando para login...")
+                    switch_page("login")
+                    return
+                st.session_state["user_id"] = user_id
+            try:
+                sources.save_search_history(st.session_state['new_entry'], st.session_state["user_id"])
+                print("DEBUG: Histórico salvo com sucesso")
+                st.session_state['old_entry'] = st.session_state['new_entry']
+                st.session_state['new_entry'] = None
+                st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+            except Exception as e:
+                st.error(f"Erro ao salvar histórico: {e}")
 
         
 if __name__ == "__main__":
