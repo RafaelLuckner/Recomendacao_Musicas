@@ -1,5 +1,6 @@
 import streamlit as st
 import re
+import sources
 
 def switch_page(target_page: str):
     st.session_state["page"] = target_page
@@ -25,6 +26,11 @@ def show():
             else:
                 # Aqui você pode chamar sua função de envio de e-mail
                 st.error("O sistema de redefinição de senha ainda está em desenvolvimento.")
+                token = sources.generate_token() # Gere um token para o e-mail
+                st.error(token)
+                sources.store_reset_token(email, token)  # Armazene o token no banco de dados
+                st.error("Token armazenado com sucesso.")
+                sources.send_reset_email(email, token)  # Envie o e-mail com o link de redefinição
                 # st.success(f"Instruções de redefinição de senha foram enviadas para {email}.")
 
     # Botão voltar
