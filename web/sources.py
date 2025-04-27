@@ -3,10 +3,12 @@ from pymongo import MongoClient
 from bson import ObjectId 
 import streamlit as st
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import os
-
+import re
+import string
+import secrets
 
 def select_colection(colecao = "usuarios"):
     load_dotenv()
@@ -25,7 +27,10 @@ def select_colection(colecao = "usuarios"):
     elif colecao == "info_usuarios":
         # Selecionar a coleção (tabela)
         collection = db["info_usuarios"]
-    
+        
+    elif colecao == "reset_tokens":
+        collection = db["reset_tokens"]
+
     return collection
 
 def load_info_user(user_id, campo):
@@ -115,3 +120,50 @@ def delete_user_by_email(email):
     except Exception as e:
         st.error(f"Erro ao deletar conta: {e}")
         return False
+    
+def store_reset_token(email, token):
+        print(f"Armazenando token: {token} para o email: {email}")
+        password_reset_tokens = select_colection("reset_tokens")
+        print("Selecionando coleção")
+        password_reset_tokens.delete_many({"email": email})
+        password_reset_tokens.insert_one({
+            "email": email,
+            "token": token,
+            "expires_at": datetime.now() + timedelta(hours=1),
+            "used": False
+})
+        
+def is_valid_token(token):
+    password_reset_tokens = select_colection("reset_tokens")
+    return password_reset_tokens.find_one({
+        "token": token,
+        "used": False,
+        "expires_at": {"$gt": datetime.now()}
+    }) is not None
+
+def update_password(token, new_password):
+    password_reset_tokens = select_colection("reset_tokens")
+    token_data = password_reset_tokens.find_one({"token": token})
+    if token_data:
+        # Atualiza a senha do usuário (use bcrypt em produção)
+        users = select_colection("usuarios")
+        users.update_one(
+            {"email": token_data["email"]},
+            {"$set": {"password": new_password}}
+        )
+        # Marca o token como usado
+        password_reset_tokens.update_one(
+            {"token": token},
+            {"$set": {"used": True}}
+        )
+        return True
+    return False
+
+def is_valid_email(email):
+    regex = r"^[\w\.-]+@[\w\.-]+\.\w{2,}$"
+    return re.match(regex, email) is not None
+
+def generate_token(length=8):
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
