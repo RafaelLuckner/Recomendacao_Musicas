@@ -10,8 +10,8 @@ import difflib
 from st_click_detector import click_detector
 from pymongo import MongoClient
 from concurrent.futures import ThreadPoolExecutor
-
 import sources
+
 
 load_dotenv()
 client_id = os.getenv("SPOTIPY_CLIENT_ID")
