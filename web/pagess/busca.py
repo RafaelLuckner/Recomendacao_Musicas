@@ -1,17 +1,18 @@
-import streamlit as st
-import requests
-from dotenv import load_dotenv
 import os
 import time
 import base64
-from streamlit_star_rating import st_star_rating
 import yt_dlp
+import spotipy
 import difflib
-from st_click_detector import click_detector
-from pymongo import MongoClient
-from concurrent.futures import ThreadPoolExecutor
-import sources
+import requests
 
+import streamlit as st
+from dotenv import load_dotenv
+from st_click_detector import click_detector
+from streamlit_star_rating import st_star_rating
+from spotipy.oauth2 import SpotifyClientCredentials
+
+import sources
 
 load_dotenv()
 client_id = os.getenv("SPOTIPY_CLIENT_ID")
@@ -63,6 +64,16 @@ def search_youtube(query, max_videos=3):
     except Exception as e:
         st.error(f"Erro ao buscar vídeo: {e}")
         return []
+    
+def get_album_cover(song_name, artist_name):
+    client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+    sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+    query = f'track:{song_name} artist:{artist_name}'
+    results = sp.search(q=query, limit=1, type='track')
+    if results['tracks']['items']:
+        track = results['tracks']['items'][0]
+        return track['album']['images'][0]['url'] if track['album']['images'] else None
+    return None
 
 # -------------------------------
 # FUNÇÕES PARA A API DO DEEZER
@@ -212,12 +223,6 @@ def atualizar_avaliacao(nota):
 # -------------------------------
 def show():
 
-
-    # Chaves da API do YouTube definidas no .env
-    api_key1 = os.getenv('API_YOUTUBE1')
-    api_key2 = os.getenv('API_YOUTUBE2')
-    
-
     if 'user_id' not in st.session_state or st.session_state["user_id"] == None:
         user_id = sources.search_user_id_mongodb(st.session_state["email"])
         st.session_state["user_id"] = user_id
@@ -225,11 +230,15 @@ def show():
         st.session_state['search_query'] = ''
     if 'search_history' not in st.session_state:
         st.session_state['search_history'] = []
+    if 'last_processed_query' not in st.session_state:
+        st.session_state['last_processed_query'] = None
     if 'user_id' not in st.session_state:
         user_id = sources.search_user_id_mongodb(st.session_state["email"])
         st.session_state["user_id"] = user_id
     if 'new_entry' not in st.session_state:
         st.session_state['new_entry'] = None
+    if 'avaliacao' not in st.session_state:
+        st.session_state['avaliacao'] = 0
 
     # Layout: duas colunas (esquerda: YouTube; direita: Top 50 em dois tabs)
     col_left, col_right = st.columns([2, 1])
@@ -247,15 +256,48 @@ def show():
             st.session_state['search_query'] = search_query
             st.rerun()
         
+        if search_query != st.session_state.get('search_query', ''):
+            st.session_state['search_query'] = search_query
+            st.session_state['last_processed_query'] = None  # Resetar para forçar atualização
+            st.session_state['avaliacao'] = 0  # Resetar avaliação para nova pesquisa
+            st.rerun()
+
         if search_query:
             st.write(f"Você está buscando por: **{search_query}**")
             videos = search_youtube('musica ' + search_query)
-            
+
             if not videos:
                 st.warning("Nenhum vídeo encontrado ou erro na busca.")
             else:
                 video_id = videos[0].get('id')
-                st.video(f"https://www.youtube.com/watch?v={video_id}",loop=True)
+                st.video(f"https://www.youtube.com/watch?v={video_id}", loop=True)
+
+            partes = search_query.split(" - ")
+            if len(partes) > 2:
+                nome_musica = partes[0].strip() + " - " + partes[1].strip()
+                nome_artista = partes[-1].strip()
+            elif len(partes) == 1:
+                nome_musica = partes[0].strip()
+                nome_artista = None
+            elif len(partes) == 2:
+                nome_musica = partes[0].strip()
+                nome_artista = partes[1].strip()
+
+            cover_url = None
+            if st.session_state.get('new_entry') and st.session_state['new_entry'].get('cover_url'):
+                cover_url = st.session_state['new_entry']['cover_url']
+            elif nome_artista:
+                cover_url = get_album_cover(nome_musica, nome_artista)
+
+            # Processar rating apenas se a query mudou ou é a primeira vez
+            if nome_artista and st.session_state['last_processed_query'] != search_query:
+                existing_rating = sources.load_rating(nome_musica, nome_artista, st.session_state["user_id"])
+                if existing_rating is not None:
+                    st.session_state['avaliacao'] = existing_rating['rating']
+                    cover_url = existing_rating.get('cover_url', cover_url)
+                else:
+                    st.session_state['avaliacao'] = 0
+                st.session_state['last_processed_query'] = search_query
 
             musica_deezer = link_musica_deezer(search_query, limiar_similaridade=0.5)
             musica_spotify = link_musica_spotify(search_query, client_id, client_secret, limiar_similaridade=0.5)
@@ -305,15 +347,27 @@ def show():
                         unsafe_allow_html=True
                     )
 
-            # Coluna com a avaliação
             with col_avaliacao:
-                st.write(" Avalie a música:")
-                avaliacao = st_star_rating("", maxValue=5, defaultValue=0, key="star_rating"   )
-
-
-                if avaliacao:
-                    # st.success(f"Você deu {avaliacao} estrela(s)! ⭐")
-                    st.session_state.avaliacao = avaliacao
+                if nome_artista and search_query:
+                    st.write("Avalie a música:")
+                    avaliacao = st_star_rating(
+                        "",
+                        maxValue=5,
+                        defaultValue=st.session_state['avaliacao'],
+                        key=f"star_rating_{search_query}_{st.session_state['user_id']}"
+                    )
+                    # Atualizar rating apenas se o usuário interagir com o componente
+                    if avaliacao != st.session_state['avaliacao']:
+                        st.session_state['avaliacao'] = avaliacao
+                        rating_entry = {
+                            "song": nome_musica,
+                            "artist": nome_artista,
+                            "rating": avaliacao,
+                            "timestamp": int(time.time()),
+                            "cover_url": cover_url
+                        }
+                        sources.save_rating(rating_entry, st.session_state["user_id"])
+                        print("DEBUG: Avaliação salva com sucesso {}".format(st.session_state['avaliacao']))
 
         else:
             st.warning("Digite o nome de uma música e artista para iniciar a busca.")
@@ -430,6 +484,7 @@ def show():
                 st.session_state["user_id"] = user_id
             try:
                 sources.save_search_history(st.session_state['new_entry'], st.session_state["user_id"])
+                print(st.session_state['new_entry'])
                 print("DEBUG: Histórico salvo com sucesso")
                 st.session_state['old_entry'] = st.session_state['new_entry']
                 st.session_state['new_entry'] = None

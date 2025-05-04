@@ -100,6 +100,16 @@ def generate_recommendations(selected_genres, data, sp, limit=10):
     
     return recommendations
 
+def load_rating_history(user_id):
+    collection = sources.select_colection("info_usuarios")
+    try:
+        user_id = sources.ObjectId(user_id)
+        user = collection.find_one({"user_id": user_id})
+        return user.get("avaliacoes", []) if user else []
+    except Exception as e:
+        st.error(f"Erro ao carregar histórico de avaliações: {e}")
+        return []
+
 def time_ago(timestamp):
 
     now = time.time()
@@ -114,7 +124,14 @@ def time_ago(timestamp):
         return f"{int(diff/86400)} dias atrás"
     
 # HTML
-def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=False):
+def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=False, rating=None):
+    full_star = "★"
+    empty_star = "☆"
+    if rating is not None:
+        stars_html = full_star * int(rating) + empty_star * (5 - int(rating))
+    else:
+        stars_html = ""
+
     return f"""
         <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
             <a href='#' id='{id}' style='text-decoration: none; color: inherit;'>
@@ -128,23 +145,25 @@ def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=Fa
                     ' 
                     onmouseover="this.style.transform='scale(1.1)'" 
                     onmouseout="this.style.transform='scale(1)'">
-                        <img src='{cover_url}' width='200px' 
+                        <img src='{cover_url}' width='{190 if rating else 200}px' 
                             style='
                                 border-radius: 10px; 
                                 display: block; 
-                                height: 200px; 
+                                height: {190 if rating else 200}px; 
                                 object-fit: cover;
                                 pointer-events: none;
                             '>
-                    </div>                                            
+                    </div>
+                    <div style='font-size: {20 if rating else 0}px; color: #ffcc00'> {stars_html}</div>
+
+
                     <div style='
-                        margin-top: 8px;
-                        font-size: 14px;
+                        font-size: 15px;
                         white-space: normal;
                         word-wrap: break-word;
                         overflow-wrap: break-word;
-                        height: 15px;
-                        line-height: 1.2em;
+                        height: 17px;
+                        line-height: 1.4em;
                         overflow: hidden;
                     '>{title}</div>
                     <div style='font-size: 12px; color: #666;'>{time_watch if show_time else artist }</div>
@@ -153,10 +172,15 @@ def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=Fa
         </div>
     """
 
-def html_scroll_container(scroll_amount=500):
+def html_scroll_container(scroll_amount=500, msg = None):
+    if msg:
+        title_html = f"<h1 style='margin: 0 0 30px 0px; font-size: 2.5em; '>{msg}</h1>" if msg else ""
+
     return f"""
             <div style='position: relative; padding: 20px; margin: 20px; overflow: hidden; background-color: transparent;'>
-
+                
+                {title_html if msg else ""}
+                
                 <!-- Botão Esquerda -->
                 <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
                     <button onclick="document.getElementById('history-scroll').scrollBy({{ left: {-scroll_amount}, behavior: 'smooth' }})"
@@ -222,7 +246,6 @@ def show():
 
     with tab1:
 
-        st.subheader("🎶 Recomendações de Música")
 
         if st.session_state.get("selected_genres"):
             selected_genres = st.session_state["selected_genres"]
@@ -235,7 +258,7 @@ def show():
             recommended_list = list(rec_dict.values())
             recommended_subset = recommended_list
 
-            html = html_scroll_container(scroll_amount=600)
+            html = html_scroll_container(scroll_amount=600, msg="🎶 Recomendações de Música")
 
             # Adiciona os álbuns dinamicamente
             for idx, rec in enumerate(recommended_subset):
@@ -278,28 +301,36 @@ def show():
             st.warning("Selecione gêneros na aba 'Gêneros' para ver recomendações.")
         
     with tab2:
-        st.subheader("📜 Histórico de Pesquisas")
-
         if "search_history" not in st.session_state:
             st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
 
         if st.session_state["search_history"]:
-            # Ordenar por timestamp em ordem decrescente e manter entradas únicas
+            # Dicionário para guardar apenas a última pesquisa de cada música (considerando música + artista)
             unique_songs = {}
-            for entry in sorted(st.session_state["search_history"], key=lambda x: x["timestamp"], reverse=True):
-                if entry['song'] not in unique_songs:
-                    unique_songs[entry['song']] = entry
 
+            # Ordena por timestamp decrescente (mais recente primeiro)
+            sorted_history = sorted(
+                st.session_state["search_history"],
+                key=lambda x: x.get("timestamp", 0),
+                reverse=True
+            )
+
+            for entry in sorted_history:
+                # Normaliza nome da música e artista para comparação
+                song_key = f"{entry['song'].strip().lower()}|{entry['artist'].strip().lower()}"
+                if song_key not in unique_songs:
+                    unique_songs[song_key] = entry  # Salva apenas a primeira (mais recente) ocorrência
+
+            # Lista final com uma entrada por música (a mais recente)
             unique_history = list(unique_songs.values())
 
-            # Inicializar o limite de exibição
+            # Controla quantas entradas mostrar na tela
             if "history_display_limit" not in st.session_state:
                 st.session_state["history_display_limit"] = 20
 
-            # Limitar exibição ao número atual de músicas
             displayed_history = unique_history[:st.session_state["history_display_limit"]]
 
-            html = html_scroll_container(scroll_amount=600)
+            html = html_scroll_container(scroll_amount=600, msg="📜 Histórico de Pesquisas")
 
             for idx, entry in enumerate(displayed_history):
                 song = entry['song']
@@ -308,47 +339,83 @@ def show():
                 entry['genre'] = entry.get("genre")
                 timestamp = time_ago(entry['timestamp'])
                 display_title = song[:20] + "..." if len(song) > 20 else song
-                item_id = f"history_{song}_{idx}".replace(" ", "_")
-
+                item_id = f"history_{song}_{artist}_{idx}".replace(" ", "_")
                 html += html_images_display(item_id, display_title, artist, cover_url, timestamp, show_time=True)
 
             clicked = click_detector(html, key="history_scroll_click")
-
             if clicked:
                 for idx, entry in enumerate(displayed_history):
                     song = entry['song']
-                    item_id = f"history_{song}_{idx}".replace(" ", "_")
+                    artist = entry['artist']
+                    item_id = f"history_{song}_{artist}_{idx}".replace(" ", "_")
                     if clicked == item_id:
-                        st.session_state["search_query"] = f"{entry['song']} - {entry['artist']}"
-                        switch_page("busca")
+                        st.session_state["search_query"] = f"{song} - {artist}"
                         new_entry = {
-                            "song": entry["song"],
-                            "artist": entry["artist"],
+                            "song": song,
+                            "artist": artist,
                             "cover_url": entry.get("cover_url", ""),
                             "timestamp": time.time(),
-                            "genre": entry["genre"]
+                            "genre": entry.get("genre", None)
                         }
                         st.session_state['new_entry'] = new_entry
-                        st.rerun()
+                        switch_page("busca")
 
-            # Botão para carregar mais 50 músicas, se houver mais para exibir
+            # Botão para carregar mais entradas
             remaining_songs = len(unique_history) - st.session_state["history_display_limit"]
             if remaining_songs > 0:
                 if st.button(f"Carregar mais ({min(remaining_songs, 1000)} restantes)"):
                     st.session_state["history_display_limit"] += 20
                     st.rerun()
-
         else:
             st.write("Nenhuma música pesquisada ainda.")
-        
-        if st.button("Atualizar histórico"):
-            st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
-            st.rerun()
+
+        # Novo: Histórico de Avaliações
+        rating_history = load_rating_history(st.session_state["user_id"])
+        if rating_history:
+            unique_ratings = {}
+            for entry in sorted(rating_history, key=lambda x: x.get("timestamp", 0), reverse=True):
+                if entry['song'] not in unique_ratings:
+                    unique_ratings[entry['song']] = entry
+            unique_rating_history = list(unique_ratings.values())
+            if "rating_display_limit" not in st.session_state:
+                st.session_state["rating_display_limit"] = 20
+            displayed_ratings = unique_rating_history[:st.session_state["rating_display_limit"]]
+            html = html_scroll_container(scroll_amount=600, msg = "⭐ Histórico de Avaliações")
+            for idx, entry in enumerate(displayed_ratings):
+                song = entry['song']
+                artist = entry['artist']
+                rating = entry['rating']
+                cover_url = entry.get("cover_url", "")
+                display_title = song[:20] + "..." if len(song) > 20 else song
+                item_id = f"rating_{song}_{idx}".replace(" ", "_")
+                html += html_images_display(item_id, display_title, artist, cover_url, rating=rating)
+            clicked = click_detector(html, key="rating_scroll_click")
+            if clicked:
+                for idx, entry in enumerate(displayed_ratings):
+                    song = entry['song']
+                    item_id = f"rating_{song}_{idx}".replace(" ", "_")
+                    if clicked == item_id:
+                        st.session_state["search_query"] = f"{entry['song']} - {entry['artist']}"
+                        st.session_state['avaliacao'] = entry['rating']
+                        new_entry = {
+                            "song": entry["song"],
+                            "artist": entry["artist"],
+                            "cover_url": entry.get("cover_url", ""),
+                            "timestamp": time.time(),
+                        }
+                        st.session_state['new_entry'] = new_entry
+                        switch_page("busca")
+
+            remaining_ratings = len(unique_rating_history) - st.session_state["rating_display_limit"]
+            if remaining_ratings > 0:
+                if st.button(f"Carregar mais avaliações ({min(remaining_ratings, 1000)} restantes)"):
+                    st.session_state["rating_display_limit"] += 20
+                    st.rerun()
+        else:
+            st.write("Nenhuma música avaliada ainda.")
 
 
 
-
-        
     # Tab 3 - Gêneros
     with tab3:
         col1, col2 = st.columns([1,2])
@@ -417,6 +484,7 @@ def show():
                     "country": ["folk", "bluegrass", "americana", "southern rock"],
                     "reggae": ["dub", "ska", "dancehall", "reggaeton"],
                     "brasileiro": ["mpb", "samba", "sertanejo", "forró", "pagode"],
+                    "sertanejo": ["mpb", "sertanejo", "forro", "pagode"]
                 }
                 similar_genres = []
                 for sel in selected:

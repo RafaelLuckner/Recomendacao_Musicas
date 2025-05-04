@@ -94,6 +94,78 @@ def save_search_history(new_entry, user_id):
     except Exception as e:
         st.error(f"Erro ao salvar histórico: {e}")
         raise  # Re-raise para depuração
+
+def save_rating(rating_entry, user_id):
+    """
+    Salva ou atualiza a avaliação de uma música no MongoDB, incluindo cover_url.
+    Se a música já tiver sido avaliada, atualiza a nota e cover_url; caso contrário, adiciona uma nova entrada.
+    
+    Args:
+        rating_entry (dict): Dicionário com as chaves 'song', 'artist', 'rating', 'timestamp', 'cover_url'.
+        user_id (str): ID do usuário no MongoDB.
+    """
+    collection = select_colection("info_usuarios")
+    try:
+        if not user_id:
+            raise ValueError("user_id não fornecido")
+        user_id = ObjectId(user_id)
+        if not isinstance(rating_entry, dict) or not all(key in rating_entry for key in ["song", "artist", "rating", "timestamp", "cover_url"]):
+            raise ValueError("rating_entry inválido ou incompleto")
+        if not isinstance(rating_entry["rating"], int) or not (1 <= rating_entry["rating"] <= 5):
+            raise ValueError("Nota inválida: deve ser um inteiro entre 1 e 5")
+        
+        rating_entry["timestamp"] = int(time.time())
+        
+        existing_rating = collection.find_one(
+            {"user_id": user_id, "avaliacoes": {"$elemMatch": {"song": rating_entry["song"], "artist": rating_entry["artist"]}}}
+        )
+        
+        if existing_rating:
+            collection.update_one(
+                {"user_id": user_id, "avaliacoes.song": rating_entry["song"], "avaliacoes.artist": rating_entry["artist"]},
+                {"$set": {
+                    "avaliacoes.$.rating": rating_entry["rating"],
+                    "avaliacoes.$.timestamp": rating_entry["timestamp"],
+                    "avaliacoes.$.cover_url": rating_entry["cover_url"]
+                }}
+            )
+        else:
+            collection.update_one(
+                {"user_id": user_id},
+                {"$push": {"avaliacoes": rating_entry}},
+                upsert=True
+            )
+    except Exception as e:
+        st.error(f"Erro ao salvar avaliação: {e}")
+        raise
+
+def load_rating(song, artist, user_id):
+    """
+    Carrega a avaliação existente de uma música para um usuário.
+    
+    Args:
+        song (str): Nome da música.
+        artist (str): Nome do artista.
+        user_id (str): ID do usuário no MongoDB.
+    
+    Returns:
+        dict or None: Dicionário com a avaliação (incluindo rating e cover_url) se existir, None caso contrário.
+    """
+    collection = select_colection("info_usuarios")
+    try:
+        user_id = ObjectId(user_id)
+        user = collection.find_one(
+            {"user_id": user_id, "avaliacoes": {"$elemMatch": {"song": song, "artist": artist}}}
+        )
+        if user:
+            for rating in user.get("avaliacoes", []):
+                if rating["song"] == song and rating["artist"] == artist:
+                    print(f"DEBUG: Avaliação encontrada: {rating['rating']}, music: {song}, artist: {artist}")
+                    return rating
+        return None
+    except Exception as e:
+        st.error(f"Erro ao carregar avaliação: {e}")
+        return None
         
 def delete_user_by_email(email):
     try:
