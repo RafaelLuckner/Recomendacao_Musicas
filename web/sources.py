@@ -166,6 +166,16 @@ def load_rating(song, artist, user_id):
     except Exception as e:
         st.error(f"Erro ao carregar avaliação: {e}")
         return None
+
+def load_rating_history(user_id):
+    collection = select_colection("info_usuarios")
+    try:
+        user_id = ObjectId(user_id)
+        user = collection.find_one({"user_id": user_id})
+        return user.get("avaliacoes", []) if user else []
+    except Exception as e:
+        st.error(f"Erro ao carregar histórico de avaliações: {e}")
+        return []
         
 def delete_user_by_email(email):
     try:

@@ -367,7 +367,7 @@ def show():
                             "cover_url": cover_url
                         }
                         sources.save_rating(rating_entry, st.session_state["user_id"])
-                        print("DEBUG: Avaliação salva com sucesso {}".format(st.session_state['avaliacao']))
+                        st.session_state["rating_history"] = sources.load_rating_history(st.session_state["user_id"])
 
         else:
             st.warning("Digite o nome de uma música e artista para iniciar a busca.")
@@ -484,7 +484,6 @@ def show():
                 st.session_state["user_id"] = user_id
             try:
                 sources.save_search_history(st.session_state['new_entry'], st.session_state["user_id"])
-                print(st.session_state['new_entry'])
                 print("DEBUG: Histórico salvo com sucesso")
                 st.session_state['old_entry'] = st.session_state['new_entry']
                 st.session_state['new_entry'] = None

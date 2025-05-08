@@ -100,15 +100,7 @@ def generate_recommendations(selected_genres, data, sp, limit=10):
     
     return recommendations
 
-def load_rating_history(user_id):
-    collection = sources.select_colection("info_usuarios")
-    try:
-        user_id = sources.ObjectId(user_id)
-        user = collection.find_one({"user_id": user_id})
-        return user.get("avaliacoes", []) if user else []
-    except Exception as e:
-        st.error(f"Erro ao carregar histórico de avaliações: {e}")
-        return []
+
 
 def time_ago(timestamp):
 
@@ -134,7 +126,7 @@ def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=Fa
 
     return f"""
         <div style='display: inline-block; text-align: center; margin-right: 20px; width: 200px; vertical-align: top;'>
-            <a href='#' id='{id}' style='text-decoration: none; color: inherit;'>
+            <a href='javascript:void(0);' id='{id}' onclick='event.preventDefault();' style='text-decoration: none; color: inherit;'>
                 <div style='height: 250px; display: flex; flex-direction: column; justify-content: flex-start;'>
                     <div style='
                         width: 200px;
@@ -155,8 +147,6 @@ def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=Fa
                             '>
                     </div>
                     <div style='font-size: {20 if rating else 0}px; color: #ffcc00'> {stars_html}</div>
-
-
                     <div style='
                         font-size: 15px;
                         white-space: normal;
@@ -182,13 +172,13 @@ def html_scroll_container(scroll_amount=500, msg = None):
                 {title_html if msg else ""}
                 
                 <!-- Botão Esquerda -->
-                <div style='position: absolute; top: 50%; left: -10px; transform: translateY(-100%); z-index: 10;'>
+                <div style='position: absolute; top: {58 if msg else 50}%; left: -8px; transform: translateY(-100%); z-index: 10;'>
                     <button onclick="document.getElementById('history-scroll').scrollBy({{ left: {-scroll_amount}, behavior: 'smooth' }})"
                         style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❮</button>
                 </div>
 
                 <!-- Botão Direita -->
-                <div style='position: absolute; top: 50%; right: -10px; transform: translateY(-100%); z-index: 10;'>
+                <div style='position: absolute; top: {58 if msg else 50}%; right: -8px; transform: translateY(-100%); z-index: 10;'>
                     <button onclick="document.getElementById('history-scroll').scrollBy({{ left: {scroll_amount}, behavior: 'smooth' }})"
                         style='background: none; border: none; font-size: 30px; color: #888888; cursor: pointer;'>❯</button>
                 </div>
@@ -368,19 +358,23 @@ def show():
                     st.rerun()
         else:
             st.write("Nenhuma música pesquisada ainda.")
+            
 
-        # Novo: Histórico de Avaliações
-        rating_history = load_rating_history(st.session_state["user_id"])
+        rating_history = st.session_state.get("rating_history", [])
+
         if rating_history:
             unique_ratings = {}
             for entry in sorted(rating_history, key=lambda x: x.get("timestamp", 0), reverse=True):
                 if entry['song'] not in unique_ratings:
                     unique_ratings[entry['song']] = entry
             unique_rating_history = list(unique_ratings.values())
+
             if "rating_display_limit" not in st.session_state:
                 st.session_state["rating_display_limit"] = 20
+
             displayed_ratings = unique_rating_history[:st.session_state["rating_display_limit"]]
-            html = html_scroll_container(scroll_amount=600, msg = "⭐ Histórico de Avaliações")
+
+            html = html_scroll_container(scroll_amount=600, msg="⭐ Histórico de Avaliações")
             for idx, entry in enumerate(displayed_ratings):
                 song = entry['song']
                 artist = entry['artist']
@@ -389,6 +383,7 @@ def show():
                 display_title = song[:20] + "..." if len(song) > 20 else song
                 item_id = f"rating_{song}_{idx}".replace(" ", "_")
                 html += html_images_display(item_id, display_title, artist, cover_url, rating=rating)
+
             clicked = click_detector(html, key="rating_scroll_click")
             if clicked:
                 for idx, entry in enumerate(displayed_ratings):
