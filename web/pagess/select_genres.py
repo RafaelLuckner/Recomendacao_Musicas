@@ -8,7 +8,7 @@ from sources import initial_save_mongodb
 
 @st.cache_data
 def load_data():
-    url_data ="https://drive.google.com/uc?export=download&id=11Fc7Yuo8uCuLxjP5J7rtEMwKr6Rvi8dw"
+    url_data ="data/data.csv"
     return pd.read_csv(url_data)
 
 def switch_page(page_name):
@@ -24,7 +24,6 @@ def show():
 
 
     # Carregar dados
-    # data = pd.read_csv('data/data_traduct.csv')
     data = load_data()
     genres = data['track_genre'].unique()
 
