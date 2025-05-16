@@ -14,7 +14,7 @@ import sources
 
 @st.cache_data
 def load_data():
-    url_data = "https://drive.google.com/uc?export=download&id=1WMyvBStaZPR9y7tn6ZB3ZvH6W4pbX0Mp"
+    url_data = "data/data.csv"
     return pd.read_csv(url_data)
 
 def switch_page(target_page: str):

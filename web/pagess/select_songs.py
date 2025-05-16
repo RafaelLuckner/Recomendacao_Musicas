@@ -6,7 +6,7 @@ from sources import initial_save_mongodb
 # Cache para carregar os dados uma única vez
 @st.cache_data
 def load_data():
-    url_data = "https://drive.google.com/uc?export=download&id=1CpD3pt4kVryQ4jzb7tg0fOIaEG2mdrKg"
+    url_data = "data/data.csv"
 
     return pd.read_csv(url_data)[['track_name', 'track_genre']].drop_duplicates()
 
