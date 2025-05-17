@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 
-df = pd.read_csv('data/data.csv', index_col=0)
+df = pd.read_csv('data/data.csv')
 
 colunas_para_modelo = [
     'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness',
@@ -89,5 +89,3 @@ def recomendar_musicas_input(input_usuario, n_recomendacoes=10, mesmo_genero=Fal
     # Caso contrário, usa a recomendação normal
     return recomendar_musicas(idx, n_recomendacoes, mesmo_genero,
                               generos_favoritos, peso_genero)
-
-recomendar_musicas_input('Xtal')
