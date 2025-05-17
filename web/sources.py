@@ -9,11 +9,14 @@ import os
 import re
 import string
 import secrets
+import codecs
 
 def select_colection(colecao = "usuarios"):
     load_dotenv()
 
     mongo_client = os.getenv("MONGO_CLIENT")
+    mongo_client = codecs.decode(mongo_client, 'unicode_escape')
+
 
     client = MongoClient(mongo_client)
 

@@ -8,3 +8,6 @@
 similaridade.ipynb
 .cache
 /venv
+
+data/cover_url.csv
+data/data_raw.csv

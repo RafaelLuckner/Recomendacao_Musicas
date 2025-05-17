@@ -156,7 +156,7 @@ def html_images_display(id, title, artist, cover_url, time_watch=0, show_time=Fa
                         line-height: 1.4em;
                         overflow: hidden;
                     '>{title}</div>
-                    <div style='font-size: 12px; color: #666;'>{time_watch if show_time else artist }</div>
+                    <div style='font-size: 12px; color: #666;'>{time_watch if show_time else artist.split(";")[0] }</div>
                 </div>
             </a>
         </div>
@@ -225,6 +225,8 @@ def show():
         st.session_state["search_query"] = ""
     if "search_history" not in st.session_state or st.session_state["search_history"] == []:
         st.session_state["search_history"] = sources.search_history_user(st.session_state["user_id"])
+    if "rating_history" not in st.session_state or st.session_state["rating_history"] == []:
+        st.session_state["rating_history"] = sources.load_rating_history(st.session_state["user_id"])
 
     # Inicializa nosso dicionário de recomendações
     if "recommended_songs" not in st.session_state:
