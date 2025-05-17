@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import NearestNeighbors
 
-df = pd.read_csv('data/data.csv', index_col=0)
+df = pd.read_csv('data/data.csv')
 
 colunas_para_modelo = [
     'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness',
@@ -56,6 +56,9 @@ def recomendar_musicas(track_index, n_recomendacoes=10, mesmo_genero=False,
         recomendacoes['similaridade'] = 1 - distancias[0][1:]
         
     else:
+        # Caso contrário, usa a recomendação normal
+        modelo_knn.fit(X_scaled)
+
         distancias, indices = modelo_knn.kneighbors(X_scaled.iloc[[track_index]], n_neighbors=X_scaled.shape[0])
         recomendacoes = df.iloc[indices[0]].copy()
         recomendacoes['similaridade'] = 1 - distancias[0]
@@ -84,10 +87,8 @@ def recomendar_musicas_input(input_usuario, n_recomendacoes=10, mesmo_genero=Fal
     idx = encontrar_idx_por_input(input_usuario)
     
     if idx is None:
-        raise ValueError("Música não encontrada no dataset.")
+        raise ValueError("Recomendações não disponíveis para essa música.")
     
     # Caso contrário, usa a recomendação normal
     return recomendar_musicas(idx, n_recomendacoes, mesmo_genero,
                               generos_favoritos, peso_genero)
-
-recomendar_musicas_input('Xtal')
