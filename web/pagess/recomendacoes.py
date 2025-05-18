@@ -11,6 +11,7 @@ from spotipy.oauth2 import SpotifyClientCredentials
 from st_click_detector import click_detector
 
 import sources
+import re
 
 @st.cache_data
 def load_data():
@@ -100,7 +101,30 @@ def generate_recommendations(selected_genres, data, sp, limit=10):
     
     return recommendations
 
+def generate_recomendations_by_user_simmilarity(selected_genres, data, sp, limit=30):
+    import recomendacao_por_user
+    musics_recommendations = recomendacao_por_user.recomendar_musicas_por_user(st.session_state["user_id"], data, top_k=limit)
 
+    recommendations = {}
+    for song, artist,genre, cover_url in zip(musics_recommendations["track_name"], musics_recommendations["artists"],musics_recommendations["track_genre"],  musics_recommendations["cover_url"]): #musics_recommendations:
+        # Verifica se o cover_url esta ausente (NaN ou None)
+        if pd.isna(cover_url) or pd.isna(artist):  
+            cover_url, resolved_artist = get_album_cover_and_artist(song, artist, sp)
+        else:
+            resolved_artist = artist  # Já tem o artista da música
+
+        if pd.isna(cover_url) or pd.isna(resolved_artist):
+            pass
+
+        else:
+            recommendations[song] = {
+                "song": song,
+                "genre": genre,
+                "artist": resolved_artist,
+                "cover_url": cover_url
+            }
+
+    return recommendations
 
 def time_ago(timestamp):
 
@@ -238,13 +262,12 @@ def show():
 
     with tab1:
 
-
         if st.session_state.get("selected_genres"):
             selected_genres = st.session_state["selected_genres"]
             sp = authenticate_spotify()
 
             if not st.session_state["recommended_songs"]:
-                st.session_state["recommended_songs"] = generate_recommendations(selected_genres, data, sp, limit=15)
+                st.session_state["recommended_songs"] = generate_recomendations_by_user_simmilarity(selected_genres, data, sp, limit=20)
 
             rec_dict = st.session_state["recommended_songs"]
             recommended_list = list(rec_dict.values())
@@ -426,7 +449,7 @@ def show():
                     with cols[0]:
                         st.markdown(f"- {genre.capitalize()}")
                     with cols[1]:
-                        if len(st.session_state['selected_genres']) <= 1:
+                        if len(st.session_state['selected_genres']) <= 0:
                             pass
                         else:
                             if st.button("✕", key=f"remove_{genre}"):
@@ -438,7 +461,38 @@ def show():
                                 st.rerun()
                 st.markdown("---")
             
-            # Seção 2: Todos os Gêneros (com busca)
+
+            # Seção 2: Recomendações baseadas em Gêneros Selecionados
+            st.markdown("### 💡 Recomendados para Você")
+            if st.session_state.get("selected_genres"):
+
+                import recomendacao_por_user
+                recommended_genres = recomendacao_por_user.recomendar_generos_por_user(st.session_state['user_id'])
+
+                if recommended_genres:
+                    cols = st.columns(2)
+                    for i, genre in enumerate(recommended_genres):
+                            col = cols[i % 2]  # Alterna entre col[0] e col[1]
+                            with col:
+                                if st.button(f"{genre.capitalize()}", key=f"rec_{genre}", use_container_width=True):
+                                    st.session_state["selected_genres"].append(genre)
+                                    sources.initial_save_mongodb("generos_escolhidos", st.session_state["selected_genres"])
+                                    st.rerun()
+                else:
+                    st.info("Adicione mais gêneros para receber recomendações personalizadas")
+            else:
+                popular_genres = ["pop", "rock", "electronic", "hiphop", "jazz", 'sertanejo']
+                st.info("Experimente começar com:")
+                cols = st.columns(2)
+                for i, genre in enumerate(popular_genres):
+                    with cols[i % 2]:
+                        if st.button(f"{genre.capitalize()}", key=f"starter_{genre}", use_container_width=True):
+                            st.session_state["selected_genres"].append(genre)
+                            st.rerun()
+
+            # Seção 3: Todos os Gêneros (com busca)
+            st.markdown("---")
+
             st.markdown("### Explorar Gêneros")
             genre_search = st.text_input("Buscar gêneros", placeholder="Digite um gênero...", key="genre_search").lower()
             
@@ -453,11 +507,8 @@ def show():
             filtered_genres = sorted(
                 [g for g in genres if genre_search in remove_acentos(g.lower())] if genre_search else genres,
                 key=lambda x: remove_acentos(x.split()[0].lower()))
-            # Criar layout em 3 colunas x 3 linhas
-            rows = [filtered_genres[i:i+3] for i in range(0, len(filtered_genres), 3)]
 
-
-            with st.container(border=True, height=400):
+            with st.container(border=True, height=300):
                 for genre in filtered_genres:
                     if genre not in st.session_state.get("selected_genres", []):
                         if st.button(f"+ {genre.capitalize()}", key=f"add_{genre}", use_container_width=True):
@@ -466,55 +517,7 @@ def show():
 
                             st.rerun()
             
-            # Seção 3: Recomendações baseadas em Gêneros Selecionados
-            st.markdown("---")
-            st.markdown("### 💡 Recomendados para Você")
-            if st.session_state.get("selected_genres"):
-                selected = st.session_state["selected_genres"]
-                genre_similarity = {
-                    "rock": ["rock alternativo", "indie rock", "hard rock", "metal", "punk"],
-                    "pop": ["pop rock", "indie pop", "dance pop", "synth pop", "k-pop"],
-                    "jazz": ["blues", "soul", "funk", "r&b", "lounge"],
-                    "eletrônica": ["edm", "techno", "house", "trance", "dubstep"],
-                    "hip-hop": ["rap", "trap", "grime", "drill", "r&b"],
-                    "clássica": ["ópera", "orquestral", "piano", "barroca", "câmara"],
-                    "country": ["folk", "bluegrass", "americana", "southern rock"],
-                    "reggae": ["dub", "ska", "dancehall", "reggaeton"],
-                    "brasileiro": ["mpb", "samba", "sertanejo", "forró", "pagode"],
-                    "sertanejo": ["mpb", "sertanejo", "forro", "pagode"]
-                }
-                similar_genres = []
-                for sel in selected:
-                    if sel in genre_similarity:
-                        similar_genres.extend(genre_similarity[sel])
-                    for main, subs in genre_similarity.items():
-                        if sel in subs and main not in similar_genres:
-                            similar_genres.append(main)
-                recommended_genres = list(set([g for g in similar_genres if g in genres and g not in selected]))
-                genre_counts = {g: similar_genres.count(g) for g in recommended_genres}
-                recommended_genres = sorted(recommended_genres, key=lambda x: -genre_counts.get(x, 0))
-                if recommended_genres:
-                    cols = st.columns(2)
-                    for i, genre in enumerate(recommended_genres[:6]):
-                        with cols[i % 2]:
-                            reason = next(
-                                (main for main, subs in genre_similarity.items() if genre in subs and main in selected),
-                                selected[0]
-                            )
-                            if st.button(f"{genre}", key=f"rec_{genre}", help=f"Relacionado a {reason.capitalize()}", use_container_width=True):
-                                st.session_state["selected_genres"].append(genre)
-                                sources.initial_save_mongodb("generos_escolhidos", st.session_state["selected_genres"])
-                                st.rerun()
-                else:
-                    st.info("Adicione mais gêneros para receber recomendações personalizadas")
-            else:
-                popular_genres = ["pop", "rock", "electronic", "hiphop", "jazz"]
-                st.info("Experimente começar com:")
-                cols = st.columns(2)
-                for i, genre in enumerate(popular_genres):
-                    with cols[i % 2]:
-                        if st.button(f"{genre.capitalize()}", key=f"starter_{genre}", use_container_width=True):
-                            st.rerun()
+
         
         with col2:
             st.subheader("Recomendações por Gênero")

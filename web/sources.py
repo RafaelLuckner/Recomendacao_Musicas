@@ -63,7 +63,9 @@ def search_history_user(user_id):
     user = collection.find_one({"user_id": user_id})
     return user.get("historico", []) if user else []
 
-
+def load_all_history():
+    collection = select_colection("info_usuarios")
+    return collection.find()
 
 def initial_save_mongodb(campo, info):
     user_id = search_user_id_mongodb(st.session_state["email"])
