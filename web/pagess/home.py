@@ -1,20 +1,25 @@
 import streamlit as st
-
+from sources import search_user_id_mongodb
 
 def switch_page(page_name):
     st.session_state["page"] = page_name
     params = {"page": page_name}
     if "email" in st.session_state:
         params["email"] = st.session_state["email"]
+    if 'name' not in st.session_state:
+        st.session_state["name"] = search_user_id_mongodb(st.session_state["email"])
     st.query_params.update(params)
     st.rerun()
 
 def show():
+    st.write(st.session_state)
+
     # Título da página inicial
     st.title("🎶 Bem-vindo ao Recomendador de Músicas!")
 
     if 'name' not in st.session_state:
-        st.session_state["name"] = "Usuário" 
+        st.session_state["name"] = search_user_id_mongodb(st.session_state["email"], name = True)
+
 
     # Texto de boas-vindas
     st.write(f"""

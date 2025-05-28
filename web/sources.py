@@ -46,9 +46,11 @@ def load_info_user(user_id, campo):
 
 
 
-def search_user_id_mongodb(email):
+def search_user_id_mongodb(email, name=False):
     collection = select_colection("usuarios")
     user = collection.find_one({"email": email})
+    if name and user is not None:
+        return user.get("nome")
     if user is not None:
         return user.get("_id")
     return None
