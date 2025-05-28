@@ -443,15 +443,6 @@ def show():
 
         # -------- CARROSSEL DE RECOMENDAÇÕES --------
         with st.container():
-            st.markdown("### 🎵 Recomendações Baseadas na Sua Pesquisa")
-            # Botão de alternância de gênero
-            st.session_state['same_genre'] = st.radio(
-                "Tipo de recomendações:",
-                options=[False, True],
-                format_func=lambda x: "Gêneros variados" if not x else "Mesmo gênero",
-                horizontal=True,
-                key="same_genre_toggle"
-            )
             if search_query:
                 try:
                     # Carregar dados para acessar cover_url
@@ -532,8 +523,17 @@ def show():
                                 st.session_state['new_entry'] = new_entry
                                 st.session_state["search_query"] = f"{rec['song']} - {rec['artist']}"
                                 st.rerun()
+                    # Botão de alternância de gênero
+                    st.session_state['same_genre'] = st.radio(
+                        "Tipo de recomendações:",
+                        options=[False, True],
+                        format_func=lambda x: "Mesmo gênero" if not x else "Gêneros variados",
+                        horizontal=True,
+                        key="same_genre_toggle"
+                    )
                 except Exception as e:
                     st.error(f"Erro ao gerar recomendações: {str(e)}")
+            
             else:
                 st.info("Pesquise uma música para ver recomendações personalizadas.")
 
