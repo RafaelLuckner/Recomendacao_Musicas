@@ -1,6 +1,6 @@
 import streamlit as st
 import time
-import sources  # Importando a função para deletar usuário, se necessário
+import sources  # Importando a função para deletar usuário e atualizar apelido
 
 def show():
     st.title("Configurações")
@@ -9,6 +9,20 @@ def show():
     if "deletar_conta" not in st.session_state:
         st.session_state.deletar_conta = False  # Inicializa o estado da deleção como False
 
+    # **Mudar Apelido**
+    st.subheader(f"Alterar Apelido: {st.session_state.get('name', '')}")
+    current_nickname = st.session_state.get("name", "")
+    new_nickname = st.text_input("Novo apelido", value=current_nickname, max_chars=20)
+    if st.button("Atualizar Apelido", use_container_width=True):
+        if new_nickname:
+            email = st.session_state["email"]
+            success = sources.update_nickname(email, new_nickname)
+            if success:
+                st.session_state["name"] = new_nickname
+                time.sleep(1)
+                st.rerun()
+    
+    st.write('---')
     # **Botão de Logout**
     col1, col2 = st.columns(2)
     with col1:

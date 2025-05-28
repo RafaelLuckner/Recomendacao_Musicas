@@ -109,7 +109,9 @@ def generate_recomendations_by_user_simmilarity(selected_genres, data, sp, limit
     for song, artist,genre, cover_url in zip(musics_recommendations["track_name"], musics_recommendations["artists"],musics_recommendations["track_genre"],  musics_recommendations["cover_url"]): #musics_recommendations:
         # Verifica se o cover_url esta ausente (NaN ou None)
         if pd.isna(cover_url) or pd.isna(artist):  
-            cover_url, resolved_artist = get_album_cover_and_artist(song, artist, sp)
+            # cover_url, resolved_artist = get_album_cover_and_artist(song, artist, sp)
+            cover_url = ''
+            resolved_artist =''
         else:
             resolved_artist = artist  # Já tem o artista da música
 
@@ -230,6 +232,7 @@ def html_scroll_container(scroll_amount=500, msg = None):
                 }}
             </style>
         """
+
 def show():
 
     dotenv.load_dotenv()

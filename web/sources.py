@@ -181,7 +181,43 @@ def load_rating_history(user_id):
     except Exception as e:
         st.error(f"Erro ao carregar histórico de avaliações: {e}")
         return []
+    
+def update_nickname(email, new_nickname):
+    """
+    Updates the user's nickname in the MongoDB database.
+    
+    Args:
+        email (str): User's email address
+        new_nickname (str): New nickname to set
         
+    Returns:
+        bool: True if update successful, False otherwise
+    """
+    try:
+        collection = select_colection("usuarios")
+        
+        # Validate nickname
+        if not new_nickname or len(new_nickname) < 3 or len(new_nickname) > 20:
+            st.error("O apelido deve ter entre 3 e 20 caracteres.")
+            return False
+            
+        # Update nickname
+        result = collection.update_one(
+            {"email": email},
+            {"$set": {"nickname": new_nickname}}
+        )
+        
+        if result.modified_count > 0:
+            st.success(f"Apelido atualizado para {new_nickname} com sucesso.")
+            return True
+        else:
+            st.error("Falha ao atualizar o apelido.")
+            return False
+            
+    except Exception as e:
+        st.error(f"Erro ao atualizar apelido: {e}")
+        return False
+          
 def delete_user_by_email(email):
     try:
         collection = select_colection("usuarios")
