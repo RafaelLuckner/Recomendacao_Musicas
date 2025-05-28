@@ -45,7 +45,6 @@ def load_info_user(user_id, campo):
     return []
 
 
-
 def search_user_id_mongodb(email, name=False):
     collection = select_colection("usuarios")
     user = collection.find_one({"email": email})
