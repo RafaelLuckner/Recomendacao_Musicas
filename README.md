@@ -2,6 +2,9 @@
 ## Visão Geral
 M4U - Music For You é uma aplicação web desenvolvida com Streamlit que utiliza técnicas de Machine Learning para oferecer um sistema de recomendação de músicas personalizado. O projeto analisa o histórico de interações, preferências de gênero e artistas dos usuários, além de recomendar faixas com base em conteúdo, sugerindo músicas alinhadas aos seus gostos a partir de dados públicos.
 
+## Link para o site
+https://m4utest.streamlit.app/
+
 ## Objetivo
 - Criar um sistema de recomendação que combine histórico de escuta, preferências de usuários e análise de conteúdo para sugerir músicas personalizadas.
 - Fornecer uma interface visual intuitiva para exibir estatísticas de escuta e recomendações de músicas.
@@ -65,33 +68,3 @@ O sistema de recomendações deste projeto utiliza um algoritmo baseado em **K-N
 
 Esse processo combina eficiência computacional com personalização, oferecendo uma experiência interativa e adaptável para os usuários do sistema.
 
-
-## Estrutura de Pastas
-
-```
-/m4u-streamlit
-    /docs                           # Documentação do projeto
-        - TAP.docx
-        - Definicao_Projeto.docx
-
-    /src                  # Código fonte do projeto
-        /ml                     # Modelos de Machine Learning
-            - modelo_recomendacao.py  # Algoritmo de recomendação
-        /utils                  # Funções auxiliares
-            - helpers.py        # Pré-processamento de dados
-
-    /data                 # Dados para treinamento
-        - data.csv            # Dataset base (Spotify Tracks)
-
-    /web                  # Interface web (Streamlit)
-        - app.py
-        /assets           # Arquivos estáticos
-            - musica.png
-        /pages            # Páginas do aplicativo
-            - home.py
-            - recomendacoes.py
-
-    requirements.txt      # Dependências do projeto
-
-
-```
